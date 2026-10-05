@@ -18,9 +18,3 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete, usando pr
    ./programa
    ```
 
-## Como rodar localmente (Linux/WSL)
-
-```bash
-make
-./programa
-```
