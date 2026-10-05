@@ -1,0 +1,3 @@
+*.o
+programa
+dados/*.dat
