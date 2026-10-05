@@ -6,7 +6,11 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete, usando pr
 
 ## Status atual
 
-**Fase 1** — menu principal navegável (estrutura inicial, sem lógica de negócio ainda).
+**Fase 2** — cadastrar, listar e consultar pedidos (RF01-03) funcionando.
+
+- Fase 1: menu principal navegável (estrutura inicial, sem lógica de negócio) — concluída.
+- Fase 2: módulo `pedido.c/h` com cadastro, listagem e consulta de pedidos — concluída.
+- Próxima fase: salvar/carregar pedidos em arquivo (RF05-06).
 
 ## Como rodar (GitHub Codespaces)
 
