@@ -2,5 +2,6 @@
 programa
 programa.exe
 dados/pedidos.txt
+dados/historico.txt
 dados/*.dat
 data/

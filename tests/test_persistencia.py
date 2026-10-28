@@ -20,7 +20,8 @@ class TestPersistencia(unittest.TestCase):
         cls.programa = Path(cls.compilacao.name) / "programa"
         subprocess.run(
             ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-o", str(cls.programa),
-             str(RAIZ / "main.c"), str(RAIZ / "pedido.c"), str(RAIZ / "arquivo.c")],
+             str(RAIZ / "main.c"), str(RAIZ / "pedido.c"), str(RAIZ / "arquivo.c"),
+             str(RAIZ / "log.c")],
             check=True,
         )
 

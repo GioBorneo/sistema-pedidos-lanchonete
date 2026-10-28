@@ -2,6 +2,7 @@
 #include <string.h>
 #include "pedido.h"
 #include "arquivo.h"
+#include "log.h"
 
 void exibirMenu(void) {
     printf("\n===== SISTEMA DE PEDIDOS DA LANCHONETE =====\n");
@@ -127,7 +128,7 @@ int main(void) {
                 printf("[Preparar em paralelo] sera implementado na proxima etapa.\n");
                 break;
             case 7:
-                printf("[Ver historico] sera implementado na proxima etapa.\n");
+                exibirHistorico();
                 break;
             case 8:
                 printf("[Medir desempenho] sera implementado na proxima etapa.\n");
