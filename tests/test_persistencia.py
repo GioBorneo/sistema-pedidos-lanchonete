@@ -144,8 +144,8 @@ class TestPersistencia(unittest.TestCase):
         self.assertIn("Erro ao fechar arquivo de pedidos", saida)
         self.assertNotIn("pedido(s) salvo(s)", saida)
 
-    def test_valores_inteiros_aceitos_pelo_cadastro(self):
-        # Nao restringir somente na carga os valores que o cadastro aceita.
+    def test_preserva_valores_de_arquivos_legados(self):
+        # A faixa do preparo e validada ao executar; o TXT antigo ainda pode ser lido.
         self.gravar("-1;Pedido;0;0\n")
         saida = self.executar("10\n9\n0\n")
         self.assertIn("1 pedido(s) carregado(s)", saida)

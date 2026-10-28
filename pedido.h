@@ -20,4 +20,8 @@ void listarPedidos(Pedido pedidos[], int total);
 /* retorna o indice do pedido no vetor, ou -1 se nao encontrado */
 int consultarPedido(Pedido pedidos[], int total, int id);
 
+/* 1 = preparo concluido (mesmo com falha de log), 0 = nao executado.
+ * Altera o pedido recebido por ponteiro; tempo permitido: 1 a 2 segundos. */
+int prepararPedido(Pedido *pedido);
+
 #endif

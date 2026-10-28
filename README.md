@@ -6,13 +6,14 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 
 ## Status atual
 
-**Fase 4** — módulo de histórico (RF10) implementado, com gravação e consulta pela opção 7. A integração com o preparo dos pedidos será feita na fase 5. Compilação e execução das fases 3 e 4 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
+**Fase 5** — preparo sequencial (RF04) implementado pela opção 4, com medição de duração e histórico real (RF10). Compilação e execução das fases 3 a 5 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
 
 - Fase 1: menu principal navegável — concluída.
 - Fase 2: cadastro, listagem e consulta de pedidos (RF01-03) — concluída.
 - Fase 3: módulo `arquivo.c/h`, opções 9 e 10 e testes de persistência — implementada, aguardando execução dos testes.
-- Fase 4: módulo `log.c/h`, opção 7 e testes de histórico — implementada, aguardando execução dos testes e integração com o preparo.
-- Opções 4, 5, 6 e 8 continuam reservadas. A próxima etapa prevista é preparar pedido sequencialmente (RF04), medindo o tempo e registrando o resultado no histórico, mediante autorização.
+- Fase 4: módulo `log.c/h`, opção 7 e testes de histórico — implementada, integrada ao preparo, aguardando execução dos testes.
+- Fase 5: `prepararPedido()` em `pedido.c/h`, opção 4, medição e log — implementada, aguardando execução dos testes.
+- Opções 5, 6 e 8 continuam reservadas. A próxima etapa prevista é a estação de preparo com processo filho e pipe (RF07-08), mediante autorização.
 
 ## Como rodar (GitHub Codespaces)
 
@@ -71,15 +72,38 @@ O módulo `log.c/h` disponibiliza `registrarLog(idPedido, status, tempoExecucao)
 
 - Data/hora e PID são obtidos do sistema no momento da gravação.
 - Status usa os estados existentes: `PENDENTE` ou `PRONTO`.
-- O tempo é a duração real em segundos, com três casas decimais, que deverá ser medida e fornecida pelo módulo de preparo. Não é apenas o valor previsto em `tempoPreparo`.
+- O tempo é a duração real em segundos, com três casas decimais, medida e fornecida pelo módulo de preparo. Não é apenas o valor previsto em `tempoPreparo`.
 - Duração negativa, infinita, NaN e status desconhecido são rejeitados. Falhas de abertura, leitura, escrita e fechamento são informadas.
 - O histórico gerado é ignorado pelo Git. O programa deve ser executado na raiz do projeto, com a pasta `dados/` existente.
 
-**Nesta fase ainda não há registros reais gerados pelo menu:** a opção 4 não prepara pedidos. A função de gravação será chamada na fase 5, após implementar o preparo sequencial. Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
+**A partir da fase 5, a opção 4 gera registros reais de preparo.** Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
 
 O módulo tem como alvo Linux/POSIX (`getpid` e `localtime_r`). A sincronização de gravações será avaliada quando houver processos e threads; append não representa garantia de gravação indivisível ou recuperação de uma escrita parcial.
 
 Para verificar o estado atual da interface, execute `make`, abra `./programa` e escolha 7. Sem um histórico existente, o resultado esperado é `Nenhum historico registrado.`
+
+## Preparo sequencial (fase 5)
+
+A opção **4 — Preparar pedido (sequencial)** solicita o ID e procura o pedido cadastrado. Um pedido pendente com tempo de 1 ou 2 segundos é preparado com `sleep()`, passa a `PRONTO` e gera um registro no histórico. O menu aguarda o término: não há processo filho nem thread nesta fase.
+
+- `prepararPedido(Pedido *pedido)` altera o pedido recebido por ponteiro. Retorna `1` se o preparo foi concluído e `0` se não foi executado.
+- A duração é medida com `clock_gettime(CLOCK_MONOTONIC)`, apropriado para intervalos de tempo. `clock()` mediria CPU, não a espera de preparo.
+- Se um sinal interromper o `sleep()`, a função espera os segundos restantes.
+- Pedido inexistente ou já pronto não é preparado; não há novo log para uma tentativa repetida.
+- O cadastro interativo agora exige tempo entre 1 e 2 segundos. Arquivos TXT antigos ainda podem ser carregados, mas pedidos com tempo fora dessa faixa não podem ser preparados.
+- Falha no relógio inicial impede o preparo. Se a medição final falhar após a espera, o pedido continua pronto, com aviso e sem duração inventada ou log.
+- Falha no histórico não desfaz o preparo: o pedido continua pronto, mas o registro não é confirmado. Uma escrita parcial ainda pode existir.
+- **O novo status não é salvo automaticamente no TXT.** Use a opção 9 antes de sair para recuperá-lo na próxima sessão.
+
+### Demonstração da fase 5
+
+1. Execute `make` e `./programa` no Codespaces.
+2. Cadastre um pedido de 1 segundo na opção 1; consulte na opção 3 para ver `PENDENTE`.
+3. Use a opção 4 e informe o ID. Aguarde a mensagem de pedido pronto e a duração medida.
+4. Consulte novamente ou liste: o status deve ser `PRONTO`.
+5. Use a opção 7 para ver data/hora, PID, pedido, status e duração.
+6. Tente preparar o mesmo pedido: o sistema deve informar que já está pronto, sem duplicar o histórico.
+7. Salve com 9, saia com 0, abra novamente e carregue com 10. Confira o status pronto.
 
 ## Testes de persistência
 
@@ -97,9 +121,17 @@ O teste compila com `-Wall -Wextra -Werror -pthread` e utiliza diretórios tempo
 python3 tests/test_logs.py
 ```
 
-A suíte compila a aplicação e um pequeno programa de teste temporário para chamar a gravação sem antecipar o preparo no menu. Verifica append, data/hora, PID, formato, validação de parâmetros, consulta inexistente/vazia, opção 7 e erros de E/S. Também verifica que cadastro, salvamento e carregamento não geram logs de execução. Não altera os arquivos reais em `dados/`.
+A suíte compila a aplicação e um pequeno programa de teste temporário para testar a gravação de forma independente do preparo. Verifica append, data/hora, PID, formato, validação de parâmetros, consulta inexistente/vazia, opção 7 e erros de E/S. Também verifica que cadastro, salvamento e carregamento não geram logs de execução. Não altera os arquivos reais em `dados/`.
 
-Para rodar as duas suítes:
+## Testes do preparo
+
+```bash
+python3 tests/test_preparo.py
+```
+
+A suíte testa preparos reais de 1 e 2 segundos, transição para pronto, histórico, persistência manual, recusa de repetição e entradas inválidas. Um driver C temporário usa wrappers do linker GNU apenas nos testes para simular falhas do relógio/logger e retomada da espera. Nenhum mecanismo de simulação é incluído no programa real. Os testes não alteram os pedidos ou o histórico do projeto.
+
+Para rodar as três suítes:
 
 ```bash
 python3 -m unittest discover -s tests -v

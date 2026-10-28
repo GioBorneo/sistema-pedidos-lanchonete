@@ -84,6 +84,11 @@ int main(void) {
                 }
                 while (getchar() != '\n') { }
 
+                if (tempo < 1 || tempo > 2) {
+                    printf("Erro: tempo de preparo deve ser entre 1 e 2 segundos.\n");
+                    break;
+                }
+
                 int resultado = cadastrarPedido(pedidos, &total, id, descricao, tempo);
                 if (resultado == 1) {
                     printf("Pedido cadastrado com sucesso!\n");
@@ -118,9 +123,33 @@ int main(void) {
                 }
                 break;
             }
-            case 4:
-                printf("[Preparar pedido] sera implementado na proxima etapa.\n");
+            case 4: {
+                int id, caractere;
+                printf("Digite o ID do pedido a preparar: ");
+                int leitura = scanf("%d", &id);
+                if (leitura == EOF) {
+                    return 0;
+                }
+                while ((caractere = getchar()) != '\n' && caractere != EOF) { }
+                if (leitura != 1) {
+                    printf("ID invalido.\n");
+                    if (caractere == EOF) {
+                        return 0;
+                    }
+                    break;
+                }
+
+                int idx = consultarPedido(pedidos, total, id);
+                if (idx == -1) {
+                    printf("Pedido com ID %d nao encontrado.\n", id);
+                } else {
+                    prepararPedido(&pedidos[idx]);
+                }
+                if (caractere == EOF) {
+                    return 0;
+                }
                 break;
+            }
             case 5:
                 printf("[Abrir estacao de preparo] sera implementado na proxima etapa.\n");
                 break;
