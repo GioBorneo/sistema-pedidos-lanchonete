@@ -1,4 +1,6 @@
 *.o
 programa
+programa.exe
+dados/pedidos.txt
 dados/*.dat
 data/

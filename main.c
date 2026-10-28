@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "pedido.h"
+#include "arquivo.h"
 
 void exibirMenu(void) {
     printf("\n===== SISTEMA DE PEDIDOS DA LANCHONETE =====\n");
@@ -53,8 +54,26 @@ int main(void) {
                 while (getchar() != '\n') { } /* limpa o '\n' que ficou no buffer antes do fgets */
 
                 printf("Digite a descricao do pedido: ");
-                fgets(descricao, sizeof(descricao), stdin);
-                descricao[strcspn(descricao, "\n")] = '\0'; /* fgets guarda o '\n', aqui a gente corta */
+                if (fgets(descricao, sizeof(descricao), stdin) == NULL) {
+                    return 0;
+                }
+                if (strchr(descricao, '\n') == NULL) {
+                    int caractere = getchar();
+                    if (caractere != '\n' && caractere != EOF) {
+                        while ((caractere = getchar()) != '\n' && caractere != EOF) { }
+                        printf("Erro: descricao deve ter no maximo 99 bytes.\n");
+                        break;
+                    }
+                    if (caractere == EOF) {
+                        return 0;
+                    }
+                }
+                descricao[strcspn(descricao, "\r\n")] = '\0';
+                /* O ponto e virgula separa os campos do arquivo TXT. */
+                if (strchr(descricao, ';') != NULL) {
+                    printf("Erro: descricao nao pode conter ponto e virgula (;).\n");
+                    break;
+                }
 
                 printf("Digite o tempo de preparo em segundos (1 a 2): ");
                 if (scanf("%d", &tempo) != 1) {
@@ -114,10 +133,14 @@ int main(void) {
                 printf("[Medir desempenho] sera implementado na proxima etapa.\n");
                 break;
             case 9:
-                printf("[Salvar pedidos] sera implementado na proxima etapa.\n");
+                if (salvarPedidos(pedidos, total)) {
+                    printf("%d pedido(s) salvo(s) em dados/pedidos.txt.\n", total);
+                }
                 break;
             case 10:
-                printf("[Carregar pedidos] sera implementado na proxima etapa.\n");
+                if (carregarPedidos(pedidos, &total)) {
+                    printf("%d pedido(s) carregado(s) de dados/pedidos.txt.\n", total);
+                }
                 break;
             case 0:
                 printf("Saindo do sistema...\n");
