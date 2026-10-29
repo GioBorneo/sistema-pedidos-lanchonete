@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <limits.h>
+#include <ctype.h>
 #include "pedido.h"
 #include "arquivo.h"
 #include "log.h"
@@ -80,6 +83,62 @@ static void medirDesempenho(Pedido pedidos[], int total, int id) {
     printf("Para conclusoes mais fortes, sao necessarias mais repeticoes e condicoes controladas.\n");
 }
 
+/* 1 = linha valida, 0 = invalida/longa, -1 = fim de entrada sem dados. */
+static int lerLinha(char linha[], size_t tamanho) {
+    size_t usados = 0;
+    int caractere;
+    int invalida = 0, leuAlgo = 0;
+    while ((caractere = getchar()) != '\n' && caractere != EOF) {
+        leuAlgo = 1;
+        if (caractere == '\0') {
+            invalida = 1;
+        }
+        if (usados < tamanho - 1) {
+            linha[usados++] = (char) caractere;
+        } else {
+            invalida = 1; /* continua consumindo, sem deixar restos para o menu */
+        }
+    }
+    if (ferror(stdin)) {
+        perror("Erro ao ler entrada");
+        exit(EXIT_FAILURE); /* erro de leitura nao e um EOF normal */
+    }
+    linha[usados] = '\0';
+    if (caractere == EOF && !leuAlgo) {
+        return -1;
+    }
+    /* Remove somente o CR da terminacao CRLF, nao um CR dentro da descricao. */
+    if (caractere == '\n' && usados > 0 && linha[usados - 1] == '\r') {
+        linha[--usados] = '\0';
+    }
+    if (strchr(linha, '\r') != NULL) {
+        invalida = 1;
+    }
+    return invalida ? 0 : 1;
+}
+
+static int lerInteiro(int *valor) {
+    char linha[256], *fim;
+    int leitura = lerLinha(linha, sizeof(linha));
+    if (leitura != 1) {
+        return leitura;
+    }
+    /* fim aponta para o que sobrou: "1abc" nao pode virar o numero 1. */
+    errno = 0;
+    long numero = strtol(linha, &fim, 10);
+    if (fim == linha || errno == ERANGE || numero < INT_MIN || numero > INT_MAX) {
+        return 0;
+    }
+    while (isspace((unsigned char) *fim)) {
+        fim++;
+    }
+    if (*fim != '\0') {
+        return 0;
+    }
+    *valor = (int) numero;
+    return 1;
+}
+
 int main(void) {
     int opcao;
     int sair = 0;
@@ -88,48 +147,42 @@ int main(void) {
     Pedido pedidos[MAX_PEDIDOS];
     int total = 0;
 
-    while (!sair) {
+    while (!sair && !feof(stdin)) {
         exibirMenu();
 
-        /* scanf retorna o numero de itens lidos com sucesso; usamos isso
-         * para detectar entrada invalida (ex: letras) sem travar o programa */
-        if (scanf("%d", &opcao) != 1) {
+        int leitura = lerInteiro(&opcao);
+        if (leitura == -1) {
+            return 0;
+        }
+        if (leitura == 0) {
             printf("Entrada invalida. Digite um numero.\n");
-            while (getchar() != '\n') {
-                /* limpa o buffer de entrada, senao o scanf fica em loop */
-            }
             continue;
         }
 
         switch (opcao) {
             case 1: {
                 int id, tempo;
-                char descricao[100];
+                char descricao[101]; /* 99 bytes de texto, CR opcional e terminador */
 
                 printf("Digite o ID do pedido: ");
-                if (scanf("%d", &id) != 1) {
-                    printf("ID invalido.\n");
-                    while (getchar() != '\n') { }
-                    break;
-                }
-                while (getchar() != '\n') { } /* limpa o '\n' que ficou no buffer antes do fgets */
-
-                printf("Digite a descricao do pedido: ");
-                if (fgets(descricao, sizeof(descricao), stdin) == NULL) {
+                leitura = lerInteiro(&id);
+                if (leitura == -1) {
                     return 0;
                 }
-                if (strchr(descricao, '\n') == NULL) {
-                    int caractere = getchar();
-                    if (caractere != '\n' && caractere != EOF) {
-                        while ((caractere = getchar()) != '\n' && caractere != EOF) { }
-                        printf("Erro: descricao deve ter no maximo 99 bytes.\n");
-                        break;
-                    }
-                    if (caractere == EOF) {
-                        return 0;
-                    }
+                if (leitura == 0) {
+                    printf("ID invalido.\n");
+                    break;
                 }
-                descricao[strcspn(descricao, "\r\n")] = '\0';
+
+                printf("Digite a descricao do pedido: ");
+                leitura = lerLinha(descricao, sizeof(descricao));
+                if (leitura == -1) {
+                    return 0;
+                }
+                if (leitura == 0 || strlen(descricao) > 99) {
+                    printf("Erro: descricao invalida ou maior que 99 bytes.\n");
+                    break;
+                }
                 /* O ponto e virgula separa os campos do arquivo TXT. */
                 if (strchr(descricao, ';') != NULL) {
                     printf("Erro: descricao nao pode conter ponto e virgula (;).\n");
@@ -137,12 +190,14 @@ int main(void) {
                 }
 
                 printf("Digite o tempo de preparo em segundos (1 a 2): ");
-                if (scanf("%d", &tempo) != 1) {
+                leitura = lerInteiro(&tempo);
+                if (leitura == -1) {
+                    return 0;
+                }
+                if (leitura == 0) {
                     printf("Tempo invalido.\n");
-                    while (getchar() != '\n') { }
                     break;
                 }
-                while (getchar() != '\n') { }
 
                 if (tempo < 1 || tempo > 2) {
                     printf("Erro: tempo de preparo deve ser entre 1 e 2 segundos.\n");
@@ -165,12 +220,14 @@ int main(void) {
             case 3: {
                 int id;
                 printf("Digite o ID do pedido a consultar: ");
-                if (scanf("%d", &id) != 1) {
+                leitura = lerInteiro(&id);
+                if (leitura == -1) {
+                    return 0;
+                }
+                if (leitura == 0) {
                     printf("ID invalido.\n");
-                    while (getchar() != '\n') { }
                     break;
                 }
-                while (getchar() != '\n') { }
 
                 int idx = consultarPedido(pedidos, total, id);
                 if (idx == -1) {
@@ -184,18 +241,14 @@ int main(void) {
                 break;
             }
             case 4: {
-                int id, caractere;
+                int id;
                 printf("Digite o ID do pedido a preparar: ");
-                int leitura = scanf("%d", &id);
-                if (leitura == EOF) {
+                leitura = lerInteiro(&id);
+                if (leitura == -1) {
                     return 0;
                 }
-                while ((caractere = getchar()) != '\n' && caractere != EOF) { }
-                if (leitura != 1) {
+                if (leitura == 0) {
                     printf("ID invalido.\n");
-                    if (caractere == EOF) {
-                        return 0;
-                    }
                     break;
                 }
 
@@ -205,24 +258,17 @@ int main(void) {
                 } else {
                     prepararPedido(&pedidos[idx]);
                 }
-                if (caractere == EOF) {
-                    return 0;
-                }
                 break;
             }
             case 5: {
-                int id, caractere;
+                int id;
                 printf("Digite o ID do pedido para a estacao de preparo: ");
-                int leitura = scanf("%d", &id);
-                if (leitura == EOF) {
+                leitura = lerInteiro(&id);
+                if (leitura == -1) {
                     return 0;
                 }
-                while ((caractere = getchar()) != '\n' && caractere != EOF) { }
-                if (leitura != 1) {
+                if (leitura == 0) {
                     printf("ID invalido.\n");
-                    if (caractere == EOF) {
-                        return 0;
-                    }
                     break;
                 }
 
@@ -232,31 +278,24 @@ int main(void) {
                 } else {
                     abrirEstacaoPreparo(&pedidos[idx]);
                 }
-                if (caractere == EOF) {
-                    return 0;
-                }
                 break;
             }
             case 6: {
-                int ids[2], caractere = '\n';
+                int ids[2];
                 int leituraValida = 1;
                 for (int i = 0; i < 2; i++) {
                     printf("Digite o ID do pedido %d para preparo em paralelo: ", i + 1);
-                    int leitura = scanf("%d", &ids[i]);
-                    if (leitura == EOF) {
+                    leitura = lerInteiro(&ids[i]);
+                    if (leitura == -1) {
                         return 0;
                     }
-                    while ((caractere = getchar()) != '\n' && caractere != EOF) { }
-                    if (leitura != 1) {
+                    if (leitura == 0) {
                         printf("ID invalido.\n");
-                        if (caractere == EOF) {
-                            return 0;
-                        }
                         leituraValida = 0;
                         break;
                     }
-                    if (caractere == EOF && i == 0) {
-                        return 0;
+                    if (feof(stdin) && i == 0) {
+                        return 0; /* o par ainda esta incompleto */
                     }
                 }
                 if (!leituraValida) {
@@ -271,33 +310,23 @@ int main(void) {
                     /* Sem join confirmado, nao acessamos o vetor nem voltamos ao menu. */
                     exit(EXIT_FAILURE);
                 }
-                if (caractere == EOF) {
-                    return 0;
-                }
                 break;
             }
             case 7:
                 exibirHistorico();
                 break;
             case 8: {
-                int id, caractere;
+                int id;
                 printf("Digite o ID do pedido para medir a consulta (5 repeticoes): ");
-                int leitura = scanf("%d", &id);
-                if (leitura == EOF) {
+                leitura = lerInteiro(&id);
+                if (leitura == -1) {
                     return 0;
                 }
-                while ((caractere = getchar()) != '\n' && caractere != EOF) { }
-                if (leitura != 1) {
+                if (leitura == 0) {
                     printf("ID invalido.\n");
-                    if (caractere == EOF) {
-                        return 0;
-                    }
                     break;
                 }
                 medirDesempenho(pedidos, total, id);
-                if (caractere == EOF) {
-                    return 0;
-                }
                 break;
             }
             case 9:

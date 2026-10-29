@@ -6,7 +6,7 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 
 ## Status atual
 
-**Fase 8** — medição repetida da consulta por ID (RF11) implementada pela opção 8, com cinco tempos, mínimo, máximo, média e análise dos limites da amostra. Compilação e execução das fases 3 a 8 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
+**Fase 9** — revisão do tratamento de erros (RF12) implementada, com leitura por linha, validação de inteiros e encerramento seguro em EOF ou erro de entrada. Compilação e execução das fases 3 a 9 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
 
 - Fase 1: menu principal navegável — concluída.
 - Fase 2: cadastro, listagem e consulta de pedidos (RF01-03) — concluída.
@@ -16,7 +16,8 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 - Fase 6: módulo `processo.c/h`, opção 5 e testes de processo/pipe — implementada, aguardando execução dos testes.
 - Fase 7: módulo `thread.c/h`, opção 6, sincronização do histórico e testes de threads — implementada, aguardando execução dos testes.
 - Fase 8: opção 8 mede cinco consultas por ID e apresenta estatísticas e limites da amostra (RF11) — implementada, aguardando execução dos testes.
-- Não há opções reservadas. A próxima etapa prevista é a revisão geral do tratamento de erros (RF12), mediante autorização.
+- Fase 9: leitura e validação das entradas revisadas, com testes de EOF e erros (RF12) — implementada, aguardando execução dos testes.
+- Não há opções reservadas. Faltam a documentação final e a validação/apresentação; as próximas fases dependem de autorização.
 
 ## Como rodar (GitHub Codespaces)
 
@@ -184,6 +185,18 @@ A opção **8 — Medir desempenho** solicita um ID existente e repete **cinco c
 4. Consulte o pedido: o estado deve continuar igual, sem novo histórico de preparo.
 5. A medição pode ser repetida após preparar o pedido; ela também aceita status `PRONTO`.
 
+## Tratamento de entradas e erros (fase 9)
+
+Duas funções locais em `main.c` leem a linha completa e convertem números com `strtol()`, sem criar outro módulo.
+
+- Cada resposta numérica deve ocupar uma linha; o buffer aceita até 255 bytes antes do LF, contando o CR quando houver CRLF. Espaços antes/depois e sinal são aceitos; letras, `1abc`, `1.5`, `1 2`, linha vazia e valores fora de `INT_MIN`–`INT_MAX` são rejeitados. IDs zero e negativos continuam válidos; tempo de cadastro permanece entre 1 e 2 segundos.
+- Linhas longas são consumidas por inteiro: seus restos não viram opções ou campos seguintes. Entrada inválida cancela a operação atual; opção de menu inválida permite tentar novamente.
+- Descrição pode ser vazia, mas tem limite de 99 bytes e não aceita ponto e vírgula, NUL nem CR interno. LF e CRLF são aceitos, inclusive com descrição de 99 bytes; apenas o CR imediatamente anterior ao LF é removido.
+- EOF (por exemplo, Ctrl+D no Linux) encerra normalmente, sem laço infinito. Cadastro ou par de IDs incompleto não inicia operação. Um último campo válido sem quebra de linha permite concluir a operação e encerrar sem novo menu. Se a entrada termina com LF, o EOF só é conhecido na leitura seguinte.
+- Erro real de leitura é diferente de EOF: informa `Erro ao ler entrada` e encerra com código de falha, sem aproveitar dados parciais.
+
+A revisão dos módulos preservou os tratamentos existentes de arquivo, relógio, processo, pipe, threads e mutex descritos acima. Não foram acrescentados backup, salvamento automático nem recuperação de preparo já concluído após falha de comunicação/log.
+
 ## Testes de persistência
 
 No Codespaces/Linux com GCC e Python 3, na raiz do projeto:
@@ -234,10 +247,18 @@ python3 -B tests/test_desempenho.py
 
 A suíte compila a aplicação real e verifica cinco resultados, estatísticas, entrada/EOF e preservação dos pedidos, TXT e histórico. Uma compilação adicional usa wrappers GNU apenas nos testes para fornecer tempos conhecidos, conferir cinco buscas medidas e dez leituras de relógio, testar passagem de segundo, tempo zero, intervalo negativo, erros iniciais/finais/tardios e resultado inesperado da consulta. A integração real não exige tempo positivo nem um limite superior estreito.
 
-Para rodar as seis suítes:
+## Testes de entradas e erros
 
 ```bash
-python3 -m unittest discover -s tests -v
+python3 -B tests/test_entradas.py
+```
+
+A suíte verifica EOF nos campos, números parciais, overflow, limites de `int`, recuperação após linhas longas, descrição vazia/UTF-8/99 bytes/CRLF e rejeição de separador, CR interno e NUL. Também cobre operações completas com último campo sem quebra de linha e erro real de entrada com stdin fechado no Linux. Uma compilação temporária usa wrappers GNU apenas nos testes para simular falhas durante leitura e descarte; nenhum mecanismo de teste é incluído no programa entregue.
+
+Para rodar as sete suítes:
+
+```bash
+python3 -B -m unittest discover -s tests -v
 ```
 
 A compilação e a execução dos testes dependem de GCC e Linux/POSIX. Se forem pulados por ausência de GCC, a validação continua pendente.
