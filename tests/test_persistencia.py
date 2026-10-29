@@ -21,7 +21,7 @@ class TestPersistencia(unittest.TestCase):
         subprocess.run(
             ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-o", str(cls.programa),
              str(RAIZ / "main.c"), str(RAIZ / "pedido.c"), str(RAIZ / "arquivo.c"),
-             str(RAIZ / "log.c"), str(RAIZ / "processo.c")],
+             str(RAIZ / "log.c"), str(RAIZ / "processo.c"), str(RAIZ / "thread.c")],
             check=True,
         )
 

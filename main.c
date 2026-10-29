@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "pedido.h"
 #include "arquivo.h"
 #include "log.h"
 #include "processo.h"
+#include "thread.h"
 
 void exibirMenu(void) {
     printf("\n===== SISTEMA DE PEDIDOS DA LANCHONETE =====\n");
@@ -178,9 +180,45 @@ int main(void) {
                 }
                 break;
             }
-            case 6:
-                printf("[Preparar em paralelo] sera implementado na proxima etapa.\n");
+            case 6: {
+                int ids[2], caractere = '\n';
+                int leituraValida = 1;
+                for (int i = 0; i < 2; i++) {
+                    printf("Digite o ID do pedido %d para preparo em paralelo: ", i + 1);
+                    int leitura = scanf("%d", &ids[i]);
+                    if (leitura == EOF) {
+                        return 0;
+                    }
+                    while ((caractere = getchar()) != '\n' && caractere != EOF) { }
+                    if (leitura != 1) {
+                        printf("ID invalido.\n");
+                        if (caractere == EOF) {
+                            return 0;
+                        }
+                        leituraValida = 0;
+                        break;
+                    }
+                    if (caractere == EOF && i == 0) {
+                        return 0;
+                    }
+                }
+                if (!leituraValida) {
+                    break;
+                }
+
+                int primeiro = consultarPedido(pedidos, total, ids[0]);
+                int segundo = consultarPedido(pedidos, total, ids[1]);
+                if (primeiro == -1 || segundo == -1) {
+                    printf("Erro: um ou ambos os pedidos nao foram encontrados.\n");
+                } else if (prepararPedidosParalelo(&pedidos[primeiro], &pedidos[segundo]) < 0) {
+                    /* Sem join confirmado, nao acessamos o vetor nem voltamos ao menu. */
+                    exit(EXIT_FAILURE);
+                }
+                if (caractere == EOF) {
+                    return 0;
+                }
                 break;
+            }
             case 7:
                 exibirHistorico();
                 break;

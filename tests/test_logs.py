@@ -46,7 +46,7 @@ class TestLogs(unittest.TestCase):
         flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
         subprocess.run(
             flags + ["-o", str(cls.programa)] +
-            [str(RAIZ / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c")],
+            [str(RAIZ / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")],
             check=True,
         )
         subprocess.run(
@@ -151,9 +151,8 @@ class TestLogs(unittest.TestCase):
         self.assertEqual(self.historico.read_bytes(), conteudo)
 
     def test_outras_operacoes_nao_geram_logs_de_execucao(self):
-        entrada = "1\n1\nBatata\n1\n9\n10\n2\n3\n1\n6\n8\n7\n0\n"
+        entrada = "1\n1\nBatata\n1\n9\n10\n2\n3\n1\n8\n7\n0\n"
         saida = self.executar_menu(entrada)
-        self.assertIn("[Preparar em paralelo] sera implementado", saida)
         self.assertIn("[Medir desempenho] sera implementado", saida)
         self.assertFalse(self.historico.exists())
         self.historico.write_bytes(b"Historico anterior\n")

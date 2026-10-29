@@ -5,10 +5,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
 #include "pedido.h"
 #include "log.h"
 
 #define CAMINHO_HISTORICO "dados/historico.txt"
+
+/* Cada thread tem seu pedido, mas todas escrevem no mesmo arquivo. */
+static pthread_mutex_t mutexHistorico = PTHREAD_MUTEX_INITIALIZER;
 
 int registrarLog(int idPedido, int status, double tempoExecucao) {
     if ((status != PENDENTE && status != PRONTO) ||
@@ -26,27 +32,37 @@ int registrarLog(int idPedido, int status, double tempoExecucao) {
         return 0;
     }
 
-    /* O modo append acrescenta registros sem apagar o historico anterior. */
-    FILE *arquivo = fopen(CAMINHO_HISTORICO, "a");
-    if (arquivo == NULL) {
-        perror("Erro ao abrir historico para registrar");
+    int erro = pthread_mutex_lock(&mutexHistorico);
+    if (erro != 0) {
+        fprintf(stderr, "Erro ao bloquear historico: %s\n", strerror(erro));
         return 0;
     }
 
-    /* PID identifica quem executou; o tempo medido sera fornecido pelo preparo. */
-    int resultado = fprintf(arquivo,
-                            "%s | PID=%ld | PEDIDO=%d | STATUS=%s | TEMPO=%.3f s\n",
-                            dataHora, (long) getpid(), idPedido,
-                            status == PRONTO ? "PRONTO" : "PENDENTE", tempoExecucao);
+    /* Protegemos apenas o arquivo, nao a espera do preparo. */
     int sucesso = 1;
-    if (resultado < 0) {
-        perror("Erro ao escrever no historico");
+    FILE *arquivo = fopen(CAMINHO_HISTORICO, "a");
+    if (arquivo == NULL) {
+        perror("Erro ao abrir historico para registrar");
         sucesso = 0;
+    } else {
+        int resultado = fprintf(arquivo,
+                                "%s | PID=%ld | PEDIDO=%d | STATUS=%s | TEMPO=%.3f s\n",
+                                dataHora, (long) getpid(), idPedido,
+                                status == PRONTO ? "PRONTO" : "PENDENTE", tempoExecucao);
+        if (resultado < 0) {
+            perror("Erro ao escrever no historico");
+            sucesso = 0;
+        }
+        /* O buffer precisa ser descarregado antes de liberar a outra thread. */
+        if (fclose(arquivo) != 0) {
+            perror("Erro ao fechar historico");
+            sucesso = 0;
+        }
     }
-    /* Uma escrita com buffer pode apresentar erro somente no fechamento. */
-    if (fclose(arquivo) != 0) {
-        perror("Erro ao fechar historico");
-        sucesso = 0;
+    erro = pthread_mutex_unlock(&mutexHistorico);
+    if (erro != 0) {
+        fprintf(stderr, "Erro ao liberar historico: %s\n", strerror(erro));
+        exit(EXIT_FAILURE); /* nao continuar com uma trava de estado incerto */
     }
     return sucesso;
 }

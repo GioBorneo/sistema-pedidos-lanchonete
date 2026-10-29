@@ -6,7 +6,7 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 
 ## Status atual
 
-**Fase 6** — estação de preparo com processo filho e pipe (RF07-08) implementada pela opção 5. Compilação e execução das fases 3 a 6 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
+**Fase 7** — preparo de dois pedidos com threads (RF09) implementado pela opção 6, com mutex para o histórico compartilhado. Compilação e execução das fases 3 a 7 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
 
 - Fase 1: menu principal navegável — concluída.
 - Fase 2: cadastro, listagem e consulta de pedidos (RF01-03) — concluída.
@@ -14,7 +14,8 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 - Fase 4: módulo `log.c/h`, opção 7 e testes de histórico — implementada, integrada ao preparo, aguardando execução dos testes.
 - Fase 5: `prepararPedido()` em `pedido.c/h`, opção 4, medição e log — implementada, aguardando execução dos testes.
 - Fase 6: módulo `processo.c/h`, opção 5 e testes de processo/pipe — implementada, aguardando execução dos testes.
-- Opções 6 e 8 continuam reservadas. A próxima etapa prevista é preparar pelo menos dois pedidos com threads (RF09), mediante autorização.
+- Fase 7: módulo `thread.c/h`, opção 6, sincronização do histórico e testes de threads — implementada, aguardando execução dos testes.
+- A opção 8 continua reservada. A próxima etapa prevista é a medição repetida com mínimo, máximo e média (RF11), mediante autorização.
 
 ## Como rodar (GitHub Codespaces)
 
@@ -77,9 +78,9 @@ O módulo `log.c/h` disponibiliza `registrarLog(idPedido, status, tempoExecucao)
 - Duração negativa, infinita, NaN e status desconhecido são rejeitados. Falhas de abertura, leitura, escrita e fechamento são informadas.
 - O histórico gerado é ignorado pelo Git. O programa deve ser executado na raiz do projeto, com a pasta `dados/` existente.
 
-**As opções 4 e 5 geram registros reais de preparo.** Na opção 5, o PID registrado é o do filho que executou o pedido, não o do pai. Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
+**As opções 4, 5 e 6 geram registros reais de preparo.** Na opção 5, o PID registrado é o do filho que executou o pedido, não o do pai. Na opção 6, as duas threads pertencem ao mesmo processo, portanto os registros têm o mesmo PID. Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
 
-O módulo tem como alvo Linux/POSIX (`getpid` e `localtime_r`). Na opção 5, o pai aguarda um único filho e não escreve outro log enquanto ele prepara. A sincronização de escritores simultâneos será avaliada na fase de threads; append não representa garantia de gravação indivisível ou recuperação de uma escrita parcial.
+O módulo tem como alvo Linux/POSIX (`getpid` e `localtime_r`). Um mutex protege abertura, escrita e fechamento do histórico entre as threads do mesmo processo; a espera de preparo fica fora dessa região. A consulta pelo menu ocorre somente após os joins. Na opção 5, não há threads de preparo ativas: o pai aguarda um único filho e não escreve outro log enquanto ele prepara. O mutex não coordena instâncias independentes do programa; append e mutex não representam transação nem recuperação de uma escrita parcial.
 
 Para verificar o estado atual da interface, execute `make`, abra `./programa` e escolha 7. Sem um histórico existente, o resultado esperado é `Nenhum historico registrado.`
 
@@ -140,6 +141,28 @@ O menu espera a estação terminar; não é execução em segundo plano. Antes d
 5. Use a opção 7: o PID do registro deve corresponder ao filho.
 6. Salve com 9, saia, abra novamente e carregue com 10 para conferir a persistência do status.
 
+## Preparo com threads (fase 7)
+
+A opção **6 — Preparar pedidos em paralelo** solicita exatamente dois IDs diferentes. Ambos devem existir, estar pendentes e ter tempo de 1–2 segundos. O par é validado antes de iniciar qualquer preparo.
+
+- `prepararPedidosParalelo()` cria duas threads com `pthread_create()` antes de aguardar com `pthread_join()`. Cada uma reutiliza `prepararPedido()` em um elemento diferente do vetor.
+- Threads compartilham a memória: os estados são alterados diretamente no vetor, sem pipe. O menu só volta após os joins; mensagens e registros podem aparecer em qualquer ordem.
+- O mutex do histórico evita gravações simultâneas no mesmo arquivo dentro deste processo. Ele não envolve o `sleep()`, para não transformar o preparo em sequencial.
+- Falha na primeira criação não inicia preparo. Falha na segunda aguarda a primeira e pode deixar somente o primeiro pedido pronto. Um preparo que falha não desfaz o outro.
+- Erros pthread são informados pelo código retornado, não por `errno`. Se um join falhar, ainda são tentados os demais, e o programa encerra com erro sem voltar ao menu com threads de término incerto.
+- Falha comum de arquivo mantém o pedido pronto e libera o mutex. Falha de lock não tenta gravar; falha excepcional de unlock encerra com erro, para não continuar com uma trava de estado incerto.
+- Retorno do módulo: `1` para ambos prontos após os joins; `0` para recusa ou operação incompleta (pode haver preparo parcial); `-1` para término de thread não confirmado.
+- **Salvar continua manual pela opção 9.** Esta fase não calcula estatísticas de desempenho.
+
+### Demonstração da fase 7
+
+1. Execute `make` e `./programa` no Codespaces.
+2. Cadastre dois pedidos de 1–2 segundos com IDs diferentes.
+3. Selecione 6 e informe os dois IDs. Aguarde a conclusão das threads.
+4. Consulte os dois pedidos: ambos devem estar `PRONTO`.
+5. Consulte 7: os registros devem ter os IDs dos dois pedidos e o mesmo PID, sem ordem obrigatória.
+6. Salve com 9, saia, abra novamente e carregue com 10 para conferir os estados.
+
 ## Testes de persistência
 
 No Codespaces/Linux com GCC e Python 3, na raiz do projeto:
@@ -174,7 +197,15 @@ python3 tests/test_processos.py
 
 A suíte verifica processo real, PIDs distintos, histórico com PID do filho, atualização do pai pelo pipe, persistência manual, ausência de menus duplicados e entradas inválidas. Um driver temporário com wrappers GNU simula falhas de criação, comunicação, espera e término do filho, incluindo transferências parciais e `EINTR`. Nenhum desses mecanismos é incluído no programa real.
 
-Para rodar as quatro suítes:
+## Testes de threads
+
+```bash
+python3 -B tests/test_threads.py
+```
+
+A suíte verifica dois pedidos reais, registros completos com mesmo PID, persistência manual, recusas, EOF e falha de histórico sem bloquear as threads. Drivers temporários com wrappers GNU testam falhas de criação, preparo, join e mutex. Uma barreira exclusiva do teste verifica sobreposição das threads sem depender de um limite de tempo de execução. Também verifica encerramento do menu após falha de join e preparo por processo depois dos joins. Esses mecanismos não fazem parte do programa entregue.
+
+Para rodar as cinco suítes:
 
 ```bash
 python3 -m unittest discover -s tests -v
