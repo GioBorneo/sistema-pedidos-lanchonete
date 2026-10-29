@@ -76,7 +76,7 @@ class TestPreparo(unittest.TestCase):
         flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
         subprocess.run(
             flags + ["-o", str(cls.programa)] +
-            [str(RAIZ / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c")],
+            [str(RAIZ / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c")],
             check=True,
         )
         subprocess.run(

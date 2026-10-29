@@ -3,6 +3,7 @@
 #include "pedido.h"
 #include "arquivo.h"
 #include "log.h"
+#include "processo.h"
 
 void exibirMenu(void) {
     printf("\n===== SISTEMA DE PEDIDOS DA LANCHONETE =====\n");
@@ -150,9 +151,33 @@ int main(void) {
                 }
                 break;
             }
-            case 5:
-                printf("[Abrir estacao de preparo] sera implementado na proxima etapa.\n");
+            case 5: {
+                int id, caractere;
+                printf("Digite o ID do pedido para a estacao de preparo: ");
+                int leitura = scanf("%d", &id);
+                if (leitura == EOF) {
+                    return 0;
+                }
+                while ((caractere = getchar()) != '\n' && caractere != EOF) { }
+                if (leitura != 1) {
+                    printf("ID invalido.\n");
+                    if (caractere == EOF) {
+                        return 0;
+                    }
+                    break;
+                }
+
+                int idx = consultarPedido(pedidos, total, id);
+                if (idx == -1) {
+                    printf("Pedido com ID %d nao encontrado.\n", id);
+                } else {
+                    abrirEstacaoPreparo(&pedidos[idx]);
+                }
+                if (caractere == EOF) {
+                    return 0;
+                }
                 break;
+            }
             case 6:
                 printf("[Preparar em paralelo] sera implementado na proxima etapa.\n");
                 break;

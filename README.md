@@ -6,14 +6,15 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 
 ## Status atual
 
-**Fase 5** — preparo sequencial (RF04) implementado pela opção 4, com medição de duração e histórico real (RF10). Compilação e execução das fases 3 a 5 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
+**Fase 6** — estação de preparo com processo filho e pipe (RF07-08) implementada pela opção 5. Compilação e execução das fases 3 a 6 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
 
 - Fase 1: menu principal navegável — concluída.
 - Fase 2: cadastro, listagem e consulta de pedidos (RF01-03) — concluída.
 - Fase 3: módulo `arquivo.c/h`, opções 9 e 10 e testes de persistência — implementada, aguardando execução dos testes.
 - Fase 4: módulo `log.c/h`, opção 7 e testes de histórico — implementada, integrada ao preparo, aguardando execução dos testes.
 - Fase 5: `prepararPedido()` em `pedido.c/h`, opção 4, medição e log — implementada, aguardando execução dos testes.
-- Opções 5, 6 e 8 continuam reservadas. A próxima etapa prevista é a estação de preparo com processo filho e pipe (RF07-08), mediante autorização.
+- Fase 6: módulo `processo.c/h`, opção 5 e testes de processo/pipe — implementada, aguardando execução dos testes.
+- Opções 6 e 8 continuam reservadas. A próxima etapa prevista é preparar pelo menos dois pedidos com threads (RF09), mediante autorização.
 
 ## Como rodar (GitHub Codespaces)
 
@@ -76,9 +77,9 @@ O módulo `log.c/h` disponibiliza `registrarLog(idPedido, status, tempoExecucao)
 - Duração negativa, infinita, NaN e status desconhecido são rejeitados. Falhas de abertura, leitura, escrita e fechamento são informadas.
 - O histórico gerado é ignorado pelo Git. O programa deve ser executado na raiz do projeto, com a pasta `dados/` existente.
 
-**A partir da fase 5, a opção 4 gera registros reais de preparo.** Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
+**As opções 4 e 5 geram registros reais de preparo.** Na opção 5, o PID registrado é o do filho que executou o pedido, não o do pai. Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
 
-O módulo tem como alvo Linux/POSIX (`getpid` e `localtime_r`). A sincronização de gravações será avaliada quando houver processos e threads; append não representa garantia de gravação indivisível ou recuperação de uma escrita parcial.
+O módulo tem como alvo Linux/POSIX (`getpid` e `localtime_r`). Na opção 5, o pai aguarda um único filho e não escreve outro log enquanto ele prepara. A sincronização de escritores simultâneos será avaliada na fase de threads; append não representa garantia de gravação indivisível ou recuperação de uma escrita parcial.
 
 Para verificar o estado atual da interface, execute `make`, abra `./programa` e escolha 7. Sem um histórico existente, o resultado esperado é `Nenhum historico registrado.`
 
@@ -104,6 +105,40 @@ A opção **4 — Preparar pedido (sequencial)** solicita o ID e procura o pedid
 5. Use a opção 7 para ver data/hora, PID, pedido, status e duração.
 6. Tente preparar o mesmo pedido: o sistema deve informar que já está pronto, sem duplicar o histórico.
 7. Salve com 9, saia com 0, abra novamente e carregue com 10. Confira o status pronto.
+
+## Estação de preparo com processo e pipe (fase 6)
+
+A opção **5 — Abrir estação de preparo** solicita o ID de um pedido pendente com tempo de 1–2 segundos. `abrirEstacaoPreparo(Pedido *pedido)` cria um pipe anônimo e um processo filho com `fork()`.
+
+### Fluxo de dados e descritores
+
+1. `pipe(canais)` fornece `canais[0]` (leitura) e `canais[1]` (escrita). Ambos são herdados no `fork()`.
+2. O filho fecha a leitura, mostra seu PID e reutiliza `prepararPedido()`, incluindo medição e log. Envia um inteiro com seu status final pela escrita e fecha essa ponta.
+3. O pai fecha a escrita e recebe o inteiro pela leitura. Ao terminar, fecha a leitura e aguarda aquele filho com `waitpid()`.
+4. O pai confirma `PRONTO` somente após receber a mensagem inteira e verificar que o filho terminou normalmente com código zero.
+
+**Por que o pipe é necessário?** Após `fork()`, pai e filho têm memórias separadas. Alterar a cópia do pedido no filho não altera o vetor do pai; o resultado recebido pelo pipe é usado para atualizar esse vetor. O parâmetro `tempoPreparo` continua o mesmo, pois somente o status é transmitido.
+
+O menu espera a estação terminar; não é execução em segundo plano. Antes do `fork()`, a saída é descarregada para evitar repetição do menu herdado no buffer. O filho descarrega suas mensagens e termina com `_exit()`, sem voltar ao menu.
+
+### Erros e limites
+
+- Verificam-se `pipe`, `fork`, `read`, `write`, `close` e `waitpid`. Leituras/escritas parciais são completadas e interrupções `EINTR` de E/S e espera são retomadas.
+- Falha na criação fecha os descritores abertos. Após criar o filho, o pai tenta recolhê-lo mesmo se a comunicação falhar.
+- Pedido pronto, inexistente ou com tempo inválido não abre uma estação.
+- Falha do histórico no filho não desfaz preparo concluído; o pai ainda pode confirmar `PRONTO` pelo pipe.
+- A função retorna `1` para resultado confirmado no pai e `0` para recusa ou resultado não confirmado. Se o filho preparar e a comunicação falhar, seu log pode existir enquanto o pai mantém o status anterior. Não há transação nem recuperação automática nessa situação.
+- Se o pai fechar a leitura por falha, a escrita do filho pode terminar por `SIGPIPE`; o pai não confirma um término anormal.
+- **Salvar continua manual pela opção 9.** Não há threads nesta fase.
+
+### Demonstração da fase 6
+
+1. Execute `make` e `./programa` no Codespaces.
+2. Cadastre um pedido de 1 segundo na opção 1.
+3. Use a opção 5 e informe o ID. Observe os PIDs do caixa (pai) e da estação (filho).
+4. Aguarde a mensagem de confirmação pelo pipe e consulte o pedido na opção 3: deve estar `PRONTO` no pai.
+5. Use a opção 7: o PID do registro deve corresponder ao filho.
+6. Salve com 9, saia, abra novamente e carregue com 10 para conferir a persistência do status.
 
 ## Testes de persistência
 
@@ -131,7 +166,15 @@ python3 tests/test_preparo.py
 
 A suíte testa preparos reais de 1 e 2 segundos, transição para pronto, histórico, persistência manual, recusa de repetição e entradas inválidas. Um driver C temporário usa wrappers do linker GNU apenas nos testes para simular falhas do relógio/logger e retomada da espera. Nenhum mecanismo de simulação é incluído no programa real. Os testes não alteram os pedidos ou o histórico do projeto.
 
-Para rodar as três suítes:
+## Testes de processos e pipe
+
+```bash
+python3 tests/test_processos.py
+```
+
+A suíte verifica processo real, PIDs distintos, histórico com PID do filho, atualização do pai pelo pipe, persistência manual, ausência de menus duplicados e entradas inválidas. Um driver temporário com wrappers GNU simula falhas de criação, comunicação, espera e término do filho, incluindo transferências parciais e `EINTR`. Nenhum desses mecanismos é incluído no programa real.
+
+Para rodar as quatro suítes:
 
 ```bash
 python3 -m unittest discover -s tests -v
