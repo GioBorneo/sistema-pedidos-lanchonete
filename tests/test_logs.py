@@ -151,9 +151,9 @@ class TestLogs(unittest.TestCase):
         self.assertEqual(self.historico.read_bytes(), conteudo)
 
     def test_outras_operacoes_nao_geram_logs_de_execucao(self):
-        entrada = "1\n1\nBatata\n1\n9\n10\n2\n3\n1\n8\n7\n0\n"
+        entrada = "1\n1\nBatata\n1\n9\n10\n2\n3\n1\n8\n1\n7\n0\n"
         saida = self.executar_menu(entrada)
-        self.assertIn("[Medir desempenho] sera implementado", saida)
+        self.assertIn("DESEMPENHO DA CONSULTA", saida)
         self.assertFalse(self.historico.exists())
         self.historico.write_bytes(b"Historico anterior\n")
         self.executar_menu(entrada)

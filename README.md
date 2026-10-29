@@ -6,7 +6,7 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 
 ## Status atual
 
-**Fase 7** — preparo de dois pedidos com threads (RF09) implementado pela opção 6, com mutex para o histórico compartilhado. Compilação e execução das fases 3 a 7 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
+**Fase 8** — medição repetida da consulta por ID (RF11) implementada pela opção 8, com cinco tempos, mínimo, máximo, média e análise dos limites da amostra. Compilação e execução das fases 3 a 8 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
 
 - Fase 1: menu principal navegável — concluída.
 - Fase 2: cadastro, listagem e consulta de pedidos (RF01-03) — concluída.
@@ -15,7 +15,8 @@ Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto
 - Fase 5: `prepararPedido()` em `pedido.c/h`, opção 4, medição e log — implementada, aguardando execução dos testes.
 - Fase 6: módulo `processo.c/h`, opção 5 e testes de processo/pipe — implementada, aguardando execução dos testes.
 - Fase 7: módulo `thread.c/h`, opção 6, sincronização do histórico e testes de threads — implementada, aguardando execução dos testes.
-- A opção 8 continua reservada. A próxima etapa prevista é a medição repetida com mínimo, máximo e média (RF11), mediante autorização.
+- Fase 8: opção 8 mede cinco consultas por ID e apresenta estatísticas e limites da amostra (RF11) — implementada, aguardando execução dos testes.
+- Não há opções reservadas. A próxima etapa prevista é a revisão geral do tratamento de erros (RF12), mediante autorização.
 
 ## Como rodar (GitHub Codespaces)
 
@@ -163,6 +164,26 @@ A opção **6 — Preparar pedidos em paralelo** solicita exatamente dois IDs di
 5. Consulte 7: os registros devem ter os IDs dos dois pedidos e o mesmo PID, sem ordem obrigatória.
 6. Salve com 9, saia, abra novamente e carregue com 10 para conferir os estados.
 
+## Medição de desempenho (fase 8)
+
+A opção **8 — Medir desempenho** solicita um ID existente e repete **cinco consultas** com `consultarPedido()`. A consulta é uma operação relevante do sistema (RF03), sem alterar o estado dos pedidos. Pode ser medida com pedido pendente ou pronto, inclusive com tempo de preparo legado fora de 1–2 segundos: não há preparo nesta opção.
+
+- Uma consulta preliminar verifica a existência do ID e fica fora do experimento. Depois são cinco chamadas medidas com `clock_gettime(CLOCK_MONOTONIC)`.
+- Cada intervalo envolve a chamada de busca; entrada, impressão e cálculo das estatísticas ficam fora dele. Os valores incluem o custo de chamada e a instrumentação do relógio, não apenas comparações isoladas.
+- O resultado apresenta os cinco tempos, menor, maior e média, em milissegundos com seis casas decimais. Os resultados só são exibidos após a coleta completa.
+- Falha de relógio, duração negativa ou resultado inesperado da busca cancela o experimento sem apresentar estatísticas parciais. Duração zero é aceita.
+- Não modifica o vetor, não salva o TXT e não gera registros de preparo no histórico.
+
+**Amostra e limites:** cinco execuções cumprem o mínimo exigido, mas não demonstram estabilidade estatística. Uma consulta em até 50 registros é muito curta, e resolução/custo do relógio, cache e carga do sistema podem dominar os valores. Seis casas decimais não garantem essa precisão. A posição do ID no vetor influencia a busca; repetir o mesmo ID não representa todos os casos. Para conclusões fortes, seriam necessárias mais repetições e condições controladas. Esta fase não compara preparo sequencial com threads e não afirma ganho de velocidade.
+
+### Demonstração da fase 8
+
+1. Execute `make` e `./programa` no Codespaces.
+2. Cadastre dois pedidos e selecione 8, informando um dos IDs.
+3. Confira cinco linhas de execução, menor, maior, média e análise.
+4. Consulte o pedido: o estado deve continuar igual, sem novo histórico de preparo.
+5. A medição pode ser repetida após preparar o pedido; ela também aceita status `PRONTO`.
+
 ## Testes de persistência
 
 No Codespaces/Linux com GCC e Python 3, na raiz do projeto:
@@ -205,7 +226,15 @@ python3 -B tests/test_threads.py
 
 A suíte verifica dois pedidos reais, registros completos com mesmo PID, persistência manual, recusas, EOF e falha de histórico sem bloquear as threads. Drivers temporários com wrappers GNU testam falhas de criação, preparo, join e mutex. Uma barreira exclusiva do teste verifica sobreposição das threads sem depender de um limite de tempo de execução. Também verifica encerramento do menu após falha de join e preparo por processo depois dos joins. Esses mecanismos não fazem parte do programa entregue.
 
-Para rodar as cinco suítes:
+## Testes de desempenho
+
+```bash
+python3 -B tests/test_desempenho.py
+```
+
+A suíte compila a aplicação real e verifica cinco resultados, estatísticas, entrada/EOF e preservação dos pedidos, TXT e histórico. Uma compilação adicional usa wrappers GNU apenas nos testes para fornecer tempos conhecidos, conferir cinco buscas medidas e dez leituras de relógio, testar passagem de segundo, tempo zero, intervalo negativo, erros iniciais/finais/tardios e resultado inesperado da consulta. A integração real não exige tempo positivo nem um limite superior estreito.
+
+Para rodar as seis suítes:
 
 ```bash
 python3 -m unittest discover -s tests -v

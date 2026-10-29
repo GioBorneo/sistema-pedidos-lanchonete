@@ -1,6 +1,9 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "pedido.h"
 #include "arquivo.h"
 #include "log.h"
@@ -21,6 +24,60 @@ void exibirMenu(void) {
     printf("10 - Carregar pedidos\n");
     printf("0  - Sair\n");
     printf("Digite uma opcao: ");
+}
+
+static void medirDesempenho(Pedido pedidos[], int total, int id) {
+    int indiceEsperado = consultarPedido(pedidos, total, id);
+    if (indiceEsperado == -1) {
+        printf("Pedido com ID %d nao encontrado.\n", id);
+        return;
+    }
+
+    double tempos[5];
+    for (int i = 0; i < 5; i++) {
+        struct timespec inicio, fim;
+        if (clock_gettime(CLOCK_MONOTONIC, &inicio) != 0) {
+            perror("Erro ao iniciar medicao da consulta");
+            printf("Medicao incompleta; estatisticas nao foram calculadas.\n");
+            return;
+        }
+        /* Medimos so a busca; entrada, impressao e estatisticas ficam de fora. */
+        int indice = consultarPedido(pedidos, total, id);
+        if (clock_gettime(CLOCK_MONOTONIC, &fim) != 0) {
+            perror("Erro ao finalizar medicao da consulta");
+            printf("Medicao incompleta; estatisticas nao foram calculadas.\n");
+            return;
+        }
+        if (indice != indiceEsperado) {
+            printf("Erro: resultado da consulta mudou durante a medicao.\n");
+            printf("Medicao incompleta; estatisticas nao foram calculadas.\n");
+            return;
+        }
+        tempos[i] = (double) (fim.tv_sec - inicio.tv_sec) * 1000.0 +
+                    (double) (fim.tv_nsec - inicio.tv_nsec) / 1000000.0;
+        if (tempos[i] < 0.0) {
+            printf("Erro: intervalo de tempo negativo.\n");
+            printf("Medicao incompleta; estatisticas nao foram calculadas.\n");
+            return;
+        }
+    }
+
+    double menor = tempos[0], maior = tempos[0], soma = 0.0;
+    printf("\n===== DESEMPENHO DA CONSULTA =====\n");
+    printf("ID: %d | Pedidos no vetor: %d | Repeticoes: 5\n", id, total);
+    for (int i = 0; i < 5; i++) {
+        printf("Execucao %d: %.6f ms\n", i + 1, tempos[i]);
+        soma += tempos[i];
+        if (tempos[i] < menor) menor = tempos[i];
+        if (tempos[i] > maior) maior = tempos[i];
+    }
+    printf("Menor: %.6f ms\n", menor);
+    printf("Maior: %.6f ms\n", maior);
+    printf("Media: %.6f ms\n", soma / 5.0);
+    printf("Analise: cinco execucoes atendem ao minimo, mas nao garantem estabilidade estatistica.\n");
+    printf("A consulta e curta: custo/resolucao do relogio, cache e carga do sistema influenciam os valores.\n");
+    printf("Tempos zero sao possiveis; seis casas decimais nao garantem essa precisao.\n");
+    printf("Para conclusoes mais fortes, sao necessarias mais repeticoes e condicoes controladas.\n");
 }
 
 int main(void) {
@@ -222,9 +279,27 @@ int main(void) {
             case 7:
                 exibirHistorico();
                 break;
-            case 8:
-                printf("[Medir desempenho] sera implementado na proxima etapa.\n");
+            case 8: {
+                int id, caractere;
+                printf("Digite o ID do pedido para medir a consulta (5 repeticoes): ");
+                int leitura = scanf("%d", &id);
+                if (leitura == EOF) {
+                    return 0;
+                }
+                while ((caractere = getchar()) != '\n' && caractere != EOF) { }
+                if (leitura != 1) {
+                    printf("ID invalido.\n");
+                    if (caractere == EOF) {
+                        return 0;
+                    }
+                    break;
+                }
+                medirDesempenho(pedidos, total, id);
+                if (caractere == EOF) {
+                    return 0;
+                }
                 break;
+            }
             case 9:
                 if (salvarPedidos(pedidos, total)) {
                     printf("%d pedido(s) salvo(s) em dados/pedidos.txt.\n", total);
