@@ -55,8 +55,8 @@ class TestEntradas(unittest.TestCase):
         cls.controlado = pasta / "teste_entrada"
         fonte = pasta / "teste_entrada.c"
         fonte.write_text(DRIVER, encoding="utf-8")
-        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
-        fontes = [str(RAIZ / nome) for nome in
+        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-I", str(RAIZ / "include")]
+        fontes = [str(RAIZ / "src" / nome) for nome in
                   ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")]
         subprocess.run(flags + ["-o", str(cls.programa)] + fontes, check=True)
         subprocess.run(

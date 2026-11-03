@@ -74,12 +74,12 @@ class TestDesempenho(unittest.TestCase):
         cls.controlado = pasta / "teste_desempenho"
         fonte = pasta / "teste_desempenho.c"
         fonte.write_text(DRIVER, encoding="utf-8")
-        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
-        fontes = [str(RAIZ / nome) for nome in
+        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-I", str(RAIZ / "include")]
+        fontes = [str(RAIZ / "src" / nome) for nome in
                   ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")]
         subprocess.run(flags + ["-o", str(cls.programa)] + fontes, check=True)
         subprocess.run(
-            flags + ["-I", str(RAIZ), "-o", str(cls.controlado)] + fontes +
+            flags + ["-o", str(cls.controlado)] + fontes +
             [str(fonte), "-Wl,--wrap=clock_gettime,--wrap=consultarPedido"], check=True,
         )
 

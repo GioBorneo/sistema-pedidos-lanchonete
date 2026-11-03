@@ -160,14 +160,14 @@ class TestProcessos(unittest.TestCase):
         cls.driver = pasta / "teste_processos"
         fonte = pasta / "teste_processos.c"
         fonte.write_text(DRIVER, encoding="utf-8")
-        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
+        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-I", str(RAIZ / "include")]
         subprocess.run(
             flags + ["-o", str(cls.programa)] +
-            [str(RAIZ / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")],
+            [str(RAIZ / "src" / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")],
             check=True,
         )
         subprocess.run(
-            flags + ["-I", str(RAIZ), "-o", str(cls.driver), str(fonte), str(RAIZ / "processo.c"),
+            flags + ["-o", str(cls.driver), str(fonte), str(RAIZ / "src" / "processo.c"),
                      "-Wl,--wrap=pipe,--wrap=fork,--wrap=read,--wrap=write,--wrap=waitpid,"
                      "--wrap=close,--wrap=prepararPedido"],
             check=True,

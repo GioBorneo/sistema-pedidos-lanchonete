@@ -2,263 +2,200 @@
 
 Trabalho Prático Integrador — Programação de Software Básico em C.
 
-Sistema de gerenciamento e monitoramento de pedidos de uma lanchonete. O projeto completo prevê processos (`fork`), threads (`pthreads`), comunicação entre processos (pipe) e persistência em arquivo.
+**Autores: Giovanna Borneo e Felipe Bezerra.**
 
-## Status atual
+Aplicação de terminal que adapta o gerenciamento de tarefas ao atendimento de uma lanchonete. Cada pedido possui ID, descrição, tempo de preparo e estado. O preparo é uma **simulação com `sleep()` de 1 ou 2 segundos**, não uma operação real de cozinha ou uma carga intensa de processamento.
 
-**Fase 9** — revisão do tratamento de erros (RF12) implementada, com leitura por linha, validação de inteiros e encerramento seguro em EOF ou erro de entrada. Compilação e execução das fases 3 a 9 ainda precisam ser verificadas no Codespaces; o ambiente local usado na implementação não possui compilador C.
+O projeto reúne cadastro e consulta, persistência em TXT, processos com `fork()`, comunicação por pipe, duas threads com `pthreads`, histórico e medição de desempenho.
 
-- Fase 1: menu principal navegável — concluída.
-- Fase 2: cadastro, listagem e consulta de pedidos (RF01-03) — concluída.
-- Fase 3: módulo `arquivo.c/h`, opções 9 e 10 e testes de persistência — implementada, aguardando execução dos testes.
-- Fase 4: módulo `log.c/h`, opção 7 e testes de histórico — implementada, integrada ao preparo, aguardando execução dos testes.
-- Fase 5: `prepararPedido()` em `pedido.c/h`, opção 4, medição e log — implementada, aguardando execução dos testes.
-- Fase 6: módulo `processo.c/h`, opção 5 e testes de processo/pipe — implementada, aguardando execução dos testes.
-- Fase 7: módulo `thread.c/h`, opção 6, sincronização do histórico e testes de threads — implementada, aguardando execução dos testes.
-- Fase 8: opção 8 mede cinco consultas por ID e apresenta estatísticas e limites da amostra (RF11) — implementada, aguardando execução dos testes.
-- Fase 9: leitura e validação das entradas revisadas, com testes de EOF e erros (RF12) — implementada, aguardando execução dos testes.
-- Não há opções reservadas. Faltam a documentação final e a validação/apresentação; as próximas fases dependem de autorização.
+## Estado da validação
 
-## Como rodar (GitHub Codespaces)
+As funcionalidades RF01–RF12 estão implementadas por inspeção do código. **A compilação e a execução completa ainda precisam ser validadas no Codespaces/Linux com GCC.**
 
-1. No repositório no GitHub, selecione a branch que contém a fase desejada e abra **Code > Codespaces** para criar ou acessar o ambiente dessa branch.
-2. Aguarde o ambiente carregar (já vem com `gcc`/`make` configurados).
-3. Na pasta do projeto, rode:
-   ```bash
-   make
-   ./programa
-   ```
+A verificação local de 03/11/2026 confirmou a sintaxe dos sete arquivos de teste, com **99 métodos de teste**. Como não há GCC nem `make` no ambiente local, inclusive no Ubuntu/WSL verificado, a descoberta das suítes apresentou:
 
-Execute o programa na raiz do projeto, onde está a pasta `dados/`.
+```text
+Ran 0 tests
+OK (skipped=7)
+```
+
+Isso significa **sete classes puladas**, e não 99 testes aprovados. A reorganização das pastas preservou integralmente o conteúdo dos arquivos C e dos cabeçalhos. As evidências finais de execução, os slides e os resultados reais de desempenho continuam pendentes.
+
+## Ambiente e execução
+
+O sistema tem como alvo **Linux/POSIX**, com GCC, GNU make e suporte a `pthreads`. Python 3 é usado apenas nos testes, não pelo programa C. O Windows nativo não é o ambiente de execução previsto.
+
+### GitHub Codespaces
+
+1. Abra o repositório no GitHub e selecione a branch desejada.
+2. Use **Code > Codespaces** para abrir ou criar o ambiente.
+3. Aguarde o carregamento da configuração em [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json), baseada em Ubuntu 24.04 com ferramentas C/C++.
+4. No terminal, na raiz do projeto, execute:
+
+```bash
+make
+./programa
+```
+
+O Makefile usa `gcc -Iinclude -Wall -Wextra -pthread` e gera `programa` na raiz. Execute sempre a partir dessa pasta, pois os caminhos de dados são relativos.
+
+Para remover somente o executável:
+
+```bash
+make clean
+```
+
+A limpeza não apaga os pedidos, o histórico ou a documentação.
+
+## Organização
+
+```text
+sistema-pedidos-lanchonete/
+├── src/                  # implementações em C
+│   ├── main.c
+│   ├── pedido.c
+│   ├── arquivo.c
+│   ├── processo.c
+│   ├── thread.c
+│   └── log.c
+├── include/              # interfaces dos módulos (.h)
+├── tests/                # sete suítes Python
+├── dados/                # pedidos.txt e historico.txt durante o uso
+├── docs/
+│   ├── relatorio.pdf
+│   └── evidencias/
+│       └── fase1.mp4     # vídeo antigo do menu inicial
+├── .devcontainer/
+├── Makefile
+├── README.md
+└── .gitignore
+```
+
+| Módulo | Responsabilidade |
+| --- | --- |
+| [main.c](src/main.c) | Menu, leitura de entradas, integração dos módulos e medição da consulta. |
+| [pedido.c](src/pedido.c) / [pedido.h](include/pedido.h) | Vetor de pedidos, cadastro, listagem, busca e preparo sequencial. |
+| [arquivo.c](src/arquivo.c) / [arquivo.h](include/arquivo.h) | Salvar e carregar pedidos em TXT. |
+| [processo.c](src/processo.c) / [processo.h](include/processo.h) | Criar filho, transmitir resultado pelo pipe e aguardar seu término. |
+| [thread.c](src/thread.c) / [thread.h](include/thread.h) | Preparar dois pedidos com threads e aguardar os joins. |
+| [log.c](src/log.c) / [log.h](include/log.h) | Registrar e consultar o histórico; proteger gravações entre threads. |
+
+A pasta local `data/`, quando presente, contém materiais de apoio e é ignorada pelo Git. Ela não é a pasta `dados/` usada pelo programa.
+
+## Menu e requisitos
+
+| Opção | Operação | Requisitos |
+| --- | --- | --- |
+| 1 | Cadastrar pedido | RF01 |
+| 2 | Listar pedidos e estados | RF02 |
+| 3 | Consultar por ID | RF03 |
+| 4 | Preparar pedido sequencialmente | RF04, RF10 |
+| 5 | Abrir estação de preparo com processo e pipe | RF04, RF07, RF08, RF10 |
+| 6 | Preparar dois pedidos em paralelo | RF04, RF09, RF10 |
+| 7 | Consultar histórico | RF10 |
+| 8 | Medir cinco consultas e apresentar estatísticas | RF11 |
+| 9 | Salvar pedidos | RF05 |
+| 10 | Carregar pedidos | RF06 |
+| 0 | Sair | — |
+
+RF12 é transversal: entradas, arquivos, relógio, processos, threads e comunicação possuem tratamentos de erro nos módulos correspondentes.
+
+O vetor comporta até **50 pedidos**. O ID pode ocupar toda a faixa de `int`, inclusive zero e negativos, mas não pode se repetir. A descrição pode ser vazia, tem limite de **99 bytes** e não aceita `;`, NUL ou CR interno na entrada do menu. Caracteres acentuados podem ocupar mais de um byte em UTF-8. O tempo informado no cadastro deve ser 1 ou 2 segundos.
+
+A entrada é lida por linha e os inteiros são convertidos com `strtol()`. Valores como `1abc`, overflow e linhas longas são recusados. EOF encerra normalmente; erro real de leitura encerra com falha. Pedidos já prontos não são preparados novamente.
 
 ## Persistência em TXT
 
-Durante a execução, os pedidos ficam em um vetor de structs na memória RAM. A opção **9 — Salvar pedidos** grava esse vetor em `dados/pedidos.txt`. A opção **10 — Carregar pedidos** recupera os dados para o vetor.
+Os pedidos permanecem em memória até a opção **9 — Salvar pedidos**. A opção **10 — Carregar pedidos** recupera o conteúdo de `dados/pedidos.txt`.
 
-O arquivo contém um pedido por linha, sem cabeçalho:
+Exemplo ilustrativo, não resultado de teste:
 
 ```text
 1;X-burger e suco;2;0
 2;Batata frita;1;1
 ```
 
-Os campos são `ID;descricao;tempoPreparo;status`. O tempo está em segundos; status `0` significa **PENDENTE** e `1`, **PRONTO**.
+Formato: `ID;descricao;tempoPreparo;status`, um registro por linha. O tempo é em segundos; `0` significa **PENDENTE** e `1`, **PRONTO**.
 
-**Por que TXT?** É legível em qualquer editor e permite demonstrar a gravação e recuperação usando apenas a biblioteca padrão de C, sem dependências externas. O ponto e vírgula separa os campos, por isso não pode aparecer na descrição. A descrição aceita até 99 bytes (caracteres acentuados podem ocupar mais de um byte em UTF-8).
+- TXT foi escolhido por ser legível e não exigir biblioteca externa de serialização.
+- Salvar substitui o arquivo anterior; salvar uma lista vazia gera um arquivo vazio.
+- Carregar substitui a lista, não acrescenta registros. Arquivo vazio carrega zero pedidos.
+- O carregamento valida em um vetor temporário antes de substituir a lista atual. Rejeita, entre outros casos, formato inválido, IDs repetidos e excesso de registros. A limitação com NUL está descrita ao final.
+- O salvamento **não é automático**, nem ao sair nem ao concluir o preparo. Para preservar o novo estado, use 9.
+- Arquivos legados com tempo fora de 1–2 segundos podem ser carregados, mas esses pedidos não podem ser preparados.
+- O salvamento não mantém backup nem é transacional: uma falha após abrir para escrita pode deixar um arquivo incompleto.
+- Os TXT gerados são ignorados pelo Git; `dados/.gitkeep` mantém a pasta no repositório.
 
-### Comportamento das operações
+## Processos, threads e histórico
 
-- Salvar é manual e **substitui o conteúdo anterior** do arquivo. Salvar sem pedidos gera um arquivo vazio.
-- Encerrar não salva automaticamente. Ao abrir novamente, use a opção 10 para recuperar os dados.
-- Carregar **substitui** os pedidos da sessão; não acrescenta à lista existente. Um arquivo vazio carrega zero pedidos.
-- A leitura usa um vetor temporário: arquivo inexistente, inválido, com IDs repetidos ou com mais de 50 pedidos não substitui a lista atual.
-- Erros de abertura, leitura, escrita e fechamento são informados. O salvamento não mantém backup: uma falha depois da abertura para escrita pode deixar o arquivo incompleto.
-- O TXT gerado é ignorado pelo Git; a pasta `dados/` é mantida por `.gitkeep`.
+**Opção 5 — Processo e pipe:** o pai cria o pipe antes do `fork()`. O filho prepara sua cópia do pedido, registra o histórico com seu PID e envia o status final. O pai recebe o inteiro completo, aguarda `waitpid()` e só confirma `PRONTO` após término normal bem-sucedido. O pipe é necessário porque pai e filho têm memórias separadas. O menu aguarda a conclusão; não há estação em segundo plano.
 
-## Demonstração da fase 3
+**Opção 6 — Threads:** recebe dois IDs distintos, válidos e pendentes. Cria as duas threads antes dos joins. Cada uma altera um pedido diferente no vetor compartilhado; o menu só continua após aguardar ambas. O mutex protege abertura, escrita e fechamento do histórico, sem envolver a espera de preparo. Uma falha de criação pode deixar preparo parcial; falha de join leva ao encerramento com erro, sem retomar o menu com threads de término incerto.
 
-1. Execute `make` e `./programa`.
-2. Cadastre dois pedidos usando a opção 1.
-3. Use a opção 9 e confira `dados/pedidos.txt` no editor.
-4. Saia com a opção 0 e execute `./programa` novamente.
-5. Use a opção 2: inicialmente a lista estará vazia.
-6. Use a opção 10 e depois as opções 2 e 3: os pedidos salvos devem reaparecer.
-
-## Histórico de pedidos (fase 4)
-
-A opção **7 — Ver histórico** mostra o conteúdo de `dados/historico.txt`. Se o arquivo ainda não existir ou estiver vazio, informa que não há histórico; consultar não cria nem altera o arquivo.
-
-O módulo `log.c/h` disponibiliza `registrarLog(idPedido, status, tempoExecucao)` e `exibirHistorico()`, com retorno `1` para sucesso e `0` para erro. A gravação acrescenta linhas (modo append), sem apagar as anteriores. Exemplo de formato:
+**Histórico:** as opções 4, 5 e 6 acrescentam registros em `dados/historico.txt`, sem apagar os anteriores. Exemplo ilustrativo:
 
 ```text
-28/10/2026 14:30:00 | PID=5231 | PEDIDO=3 | STATUS=PRONTO | TEMPO=2.001 s
+03/11/2026 14:30:00 | PID=5231 | PEDIDO=3 | STATUS=PRONTO | TEMPO=2.001 s
 ```
 
-- Data/hora e PID são obtidos do sistema no momento da gravação.
-- Status usa os estados existentes: `PENDENTE` ou `PRONTO`.
-- O tempo é a duração real em segundos, com três casas decimais, medida e fornecida pelo módulo de preparo. Não é apenas o valor previsto em `tempoPreparo`.
-- Duração negativa, infinita, NaN e status desconhecido são rejeitados. Falhas de abertura, leitura, escrita e fechamento são informadas.
-- O histórico gerado é ignorado pelo Git. O programa deve ser executado na raiz do projeto, com a pasta `dados/` existente.
+Data/hora e PID vêm do sistema. A duração é medida com relógio monotônico. No processo filho, registra-se o PID do filho; nas duas threads, o PID é o mesmo porque pertencem ao mesmo processo. A ordem das mensagens e dos logs das threads não é fixa.
 
-**As opções 4, 5 e 6 geram registros reais de preparo.** Na opção 5, o PID registrado é o do filho que executou o pedido, não o do pai. Na opção 6, as duas threads pertencem ao mesmo processo, portanto os registros têm o mesmo PID. Cadastro, salvamento e carregamento não criam eventos de execução. Os dados usados nos testes existem somente em pastas temporárias.
+Falhas de medição final ou de histórico não desfazem um preparo já concluído. Se o filho preparar e a comunicação falhar, o pai pode manter o estado anterior mesmo havendo log do filho. Não há recuperação automática dessa divergência. O mutex coordena threads do mesmo processo, não instâncias independentes do programa.
 
-O módulo tem como alvo Linux/POSIX (`getpid` e `localtime_r`). Um mutex protege abertura, escrita e fechamento do histórico entre as threads do mesmo processo; a espera de preparo fica fora dessa região. A consulta pelo menu ocorre somente após os joins. Na opção 5, não há threads de preparo ativas: o pai aguarda um único filho e não escreve outro log enquanto ele prepara. O mutex não coordena instâncias independentes do programa; append e mutex não representam transação nem recuperação de uma escrita parcial.
+## Medição de desempenho
 
-Para verificar o estado atual da interface, execute `make`, abra `./programa` e escolha 7. Sem um histórico existente, o resultado esperado é `Nenhum historico registrado.`
+A opção 8 mede **cinco buscas por ID** com `consultarPedido()` e `clock_gettime(CLOCK_MONOTONIC)`. Exibe os tempos em milissegundos, menor, maior e média, sem preparar pedidos nem alterar os arquivos.
 
-## Preparo sequencial (fase 5)
+A consulta é curta: resolução e custo do relógio, cache, posição do ID e carga do sistema influenciam os valores. Cinco repetições atendem ao mínimo do enunciado, mas não demonstram estabilidade estatística. Tempos zero são possíveis; seis casas decimais não garantem essa precisão. Não há comparação de desempenho sequencial versus concorrente nem resultados reais coletados nesta versão da documentação.
 
-A opção **4 — Preparar pedido (sequencial)** solicita o ID e procura o pedido cadastrado. Um pedido pendente com tempo de 1 ou 2 segundos é preparado com `sleep()`, passa a `PRONTO` e gera um registro no histórico. O menu aguarda o término: não há processo filho nem thread nesta fase.
+## Testes
 
-- `prepararPedido(Pedido *pedido)` altera o pedido recebido por ponteiro. Retorna `1` se o preparo foi concluído e `0` se não foi executado.
-- A duração é medida com `clock_gettime(CLOCK_MONOTONIC)`, apropriado para intervalos de tempo. `clock()` mediria CPU, não a espera de preparo.
-- Se um sinal interromper o `sleep()`, a função espera os segundos restantes.
-- Pedido inexistente ou já pronto não é preparado; não há novo log para uma tentativa repetida.
-- O cadastro interativo agora exige tempo entre 1 e 2 segundos. Arquivos TXT antigos ainda podem ser carregados, mas pedidos com tempo fora dessa faixa não podem ser preparados.
-- Falha no relógio inicial impede o preparo. Se a medição final falhar após a espera, o pedido continua pronto, com aviso e sem duração inventada ou log.
-- Falha no histórico não desfaz o preparo: o pedido continua pronto, mas o registro não é confirmado. Uma escrita parcial ainda pode existir.
-- **O novo status não é salvo automaticamente no TXT.** Use a opção 9 antes de sair para recuperá-lo na próxima sessão.
-
-### Demonstração da fase 5
-
-1. Execute `make` e `./programa` no Codespaces.
-2. Cadastre um pedido de 1 segundo na opção 1; consulte na opção 3 para ver `PENDENTE`.
-3. Use a opção 4 e informe o ID. Aguarde a mensagem de pedido pronto e a duração medida.
-4. Consulte novamente ou liste: o status deve ser `PRONTO`.
-5. Use a opção 7 para ver data/hora, PID, pedido, status e duração.
-6. Tente preparar o mesmo pedido: o sistema deve informar que já está pronto, sem duplicar o histórico.
-7. Salve com 9, saia com 0, abra novamente e carregue com 10. Confira o status pronto.
-
-## Estação de preparo com processo e pipe (fase 6)
-
-A opção **5 — Abrir estação de preparo** solicita o ID de um pedido pendente com tempo de 1–2 segundos. `abrirEstacaoPreparo(Pedido *pedido)` cria um pipe anônimo e um processo filho com `fork()`.
-
-### Fluxo de dados e descritores
-
-1. `pipe(canais)` fornece `canais[0]` (leitura) e `canais[1]` (escrita). Ambos são herdados no `fork()`.
-2. O filho fecha a leitura, mostra seu PID e reutiliza `prepararPedido()`, incluindo medição e log. Envia um inteiro com seu status final pela escrita e fecha essa ponta.
-3. O pai fecha a escrita e recebe o inteiro pela leitura. Ao terminar, fecha a leitura e aguarda aquele filho com `waitpid()`.
-4. O pai confirma `PRONTO` somente após receber a mensagem inteira e verificar que o filho terminou normalmente com código zero.
-
-**Por que o pipe é necessário?** Após `fork()`, pai e filho têm memórias separadas. Alterar a cópia do pedido no filho não altera o vetor do pai; o resultado recebido pelo pipe é usado para atualizar esse vetor. O parâmetro `tempoPreparo` continua o mesmo, pois somente o status é transmitido.
-
-O menu espera a estação terminar; não é execução em segundo plano. Antes do `fork()`, a saída é descarregada para evitar repetição do menu herdado no buffer. O filho descarrega suas mensagens e termina com `_exit()`, sem voltar ao menu.
-
-### Erros e limites
-
-- Verificam-se `pipe`, `fork`, `read`, `write`, `close` e `waitpid`. Leituras/escritas parciais são completadas e interrupções `EINTR` de E/S e espera são retomadas.
-- Falha na criação fecha os descritores abertos. Após criar o filho, o pai tenta recolhê-lo mesmo se a comunicação falhar.
-- Pedido pronto, inexistente ou com tempo inválido não abre uma estação.
-- Falha do histórico no filho não desfaz preparo concluído; o pai ainda pode confirmar `PRONTO` pelo pipe.
-- A função retorna `1` para resultado confirmado no pai e `0` para recusa ou resultado não confirmado. Se o filho preparar e a comunicação falhar, seu log pode existir enquanto o pai mantém o status anterior. Não há transação nem recuperação automática nessa situação.
-- Se o pai fechar a leitura por falha, a escrita do filho pode terminar por `SIGPIPE`; o pai não confirma um término anormal.
-- **Salvar continua manual pela opção 9.** Não há threads nesta fase.
-
-### Demonstração da fase 6
-
-1. Execute `make` e `./programa` no Codespaces.
-2. Cadastre um pedido de 1 segundo na opção 1.
-3. Use a opção 5 e informe o ID. Observe os PIDs do caixa (pai) e da estação (filho).
-4. Aguarde a mensagem de confirmação pelo pipe e consulte o pedido na opção 3: deve estar `PRONTO` no pai.
-5. Use a opção 7: o PID do registro deve corresponder ao filho.
-6. Salve com 9, saia, abra novamente e carregue com 10 para conferir a persistência do status.
-
-## Preparo com threads (fase 7)
-
-A opção **6 — Preparar pedidos em paralelo** solicita exatamente dois IDs diferentes. Ambos devem existir, estar pendentes e ter tempo de 1–2 segundos. O par é validado antes de iniciar qualquer preparo.
-
-- `prepararPedidosParalelo()` cria duas threads com `pthread_create()` antes de aguardar com `pthread_join()`. Cada uma reutiliza `prepararPedido()` em um elemento diferente do vetor.
-- Threads compartilham a memória: os estados são alterados diretamente no vetor, sem pipe. O menu só volta após os joins; mensagens e registros podem aparecer em qualquer ordem.
-- O mutex do histórico evita gravações simultâneas no mesmo arquivo dentro deste processo. Ele não envolve o `sleep()`, para não transformar o preparo em sequencial.
-- Falha na primeira criação não inicia preparo. Falha na segunda aguarda a primeira e pode deixar somente o primeiro pedido pronto. Um preparo que falha não desfaz o outro.
-- Erros pthread são informados pelo código retornado, não por `errno`. Se um join falhar, ainda são tentados os demais, e o programa encerra com erro sem voltar ao menu com threads de término incerto.
-- Falha comum de arquivo mantém o pedido pronto e libera o mutex. Falha de lock não tenta gravar; falha excepcional de unlock encerra com erro, para não continuar com uma trava de estado incerto.
-- Retorno do módulo: `1` para ambos prontos após os joins; `0` para recusa ou operação incompleta (pode haver preparo parcial); `-1` para término de thread não confirmado.
-- **Salvar continua manual pela opção 9.** Esta fase não calcula estatísticas de desempenho.
-
-### Demonstração da fase 7
-
-1. Execute `make` e `./programa` no Codespaces.
-2. Cadastre dois pedidos de 1–2 segundos com IDs diferentes.
-3. Selecione 6 e informe os dois IDs. Aguarde a conclusão das threads.
-4. Consulte os dois pedidos: ambos devem estar `PRONTO`.
-5. Consulte 7: os registros devem ter os IDs dos dois pedidos e o mesmo PID, sem ordem obrigatória.
-6. Salve com 9, saia, abra novamente e carregue com 10 para conferir os estados.
-
-## Medição de desempenho (fase 8)
-
-A opção **8 — Medir desempenho** solicita um ID existente e repete **cinco consultas** com `consultarPedido()`. A consulta é uma operação relevante do sistema (RF03), sem alterar o estado dos pedidos. Pode ser medida com pedido pendente ou pronto, inclusive com tempo de preparo legado fora de 1–2 segundos: não há preparo nesta opção.
-
-- Uma consulta preliminar verifica a existência do ID e fica fora do experimento. Depois são cinco chamadas medidas com `clock_gettime(CLOCK_MONOTONIC)`.
-- Cada intervalo envolve a chamada de busca; entrada, impressão e cálculo das estatísticas ficam fora dele. Os valores incluem o custo de chamada e a instrumentação do relógio, não apenas comparações isoladas.
-- O resultado apresenta os cinco tempos, menor, maior e média, em milissegundos com seis casas decimais. Os resultados só são exibidos após a coleta completa.
-- Falha de relógio, duração negativa ou resultado inesperado da busca cancela o experimento sem apresentar estatísticas parciais. Duração zero é aceita.
-- Não modifica o vetor, não salva o TXT e não gera registros de preparo no histórico.
-
-**Amostra e limites:** cinco execuções cumprem o mínimo exigido, mas não demonstram estabilidade estatística. Uma consulta em até 50 registros é muito curta, e resolução/custo do relógio, cache e carga do sistema podem dominar os valores. Seis casas decimais não garantem essa precisão. A posição do ID no vetor influencia a busca; repetir o mesmo ID não representa todos os casos. Para conclusões fortes, seriam necessárias mais repetições e condições controladas. Esta fase não compara preparo sequencial com threads e não afirma ganho de velocidade.
-
-### Demonstração da fase 8
-
-1. Execute `make` e `./programa` no Codespaces.
-2. Cadastre dois pedidos e selecione 8, informando um dos IDs.
-3. Confira cinco linhas de execução, menor, maior, média e análise.
-4. Consulte o pedido: o estado deve continuar igual, sem novo histórico de preparo.
-5. A medição pode ser repetida após preparar o pedido; ela também aceita status `PRONTO`.
-
-## Tratamento de entradas e erros (fase 9)
-
-Duas funções locais em `main.c` leem a linha completa e convertem números com `strtol()`, sem criar outro módulo.
-
-- Cada resposta numérica deve ocupar uma linha; o buffer aceita até 255 bytes antes do LF, contando o CR quando houver CRLF. Espaços antes/depois e sinal são aceitos; letras, `1abc`, `1.5`, `1 2`, linha vazia e valores fora de `INT_MIN`–`INT_MAX` são rejeitados. IDs zero e negativos continuam válidos; tempo de cadastro permanece entre 1 e 2 segundos.
-- Linhas longas são consumidas por inteiro: seus restos não viram opções ou campos seguintes. Entrada inválida cancela a operação atual; opção de menu inválida permite tentar novamente.
-- Descrição pode ser vazia, mas tem limite de 99 bytes e não aceita ponto e vírgula, NUL nem CR interno. LF e CRLF são aceitos, inclusive com descrição de 99 bytes; apenas o CR imediatamente anterior ao LF é removido.
-- EOF (por exemplo, Ctrl+D no Linux) encerra normalmente, sem laço infinito. Cadastro ou par de IDs incompleto não inicia operação. Um último campo válido sem quebra de linha permite concluir a operação e encerrar sem novo menu. Se a entrada termina com LF, o EOF só é conhecido na leitura seguinte.
-- Erro real de leitura é diferente de EOF: informa `Erro ao ler entrada` e encerra com código de falha, sem aproveitar dados parciais.
-
-A revisão dos módulos preservou os tratamentos existentes de arquivo, relógio, processo, pipe, threads e mutex descritos acima. Não foram acrescentados backup, salvamento automático nem recuperação de preparo já concluído após falha de comunicação/log.
-
-## Testes de persistência
-
-No Codespaces/Linux com GCC e Python 3, na raiz do projeto:
-
-```bash
-python3 tests/test_persistencia.py
-```
-
-O teste compila com `-Wall -Wextra -Werror -pthread` e utiliza diretórios temporários, sem alterar os pedidos reais. Cobre salvamento entre sessões, preservação do status, substituição da lista, erros de arquivo, formatos inválidos, IDs repetidos, limites, CRLF e arquivo vazio. Se não houver GCC, informa que os testes foram pulados; isso não significa que o programa foi validado.
-
-## Testes do histórico
-
-```bash
-python3 tests/test_logs.py
-```
-
-A suíte compila a aplicação e um pequeno programa de teste temporário para testar a gravação de forma independente do preparo. Verifica append, data/hora, PID, formato, validação de parâmetros, consulta inexistente/vazia, opção 7 e erros de E/S. Também verifica que cadastro, salvamento e carregamento não geram logs de execução. Não altera os arquivos reais em `dados/`.
-
-## Testes do preparo
-
-```bash
-python3 tests/test_preparo.py
-```
-
-A suíte testa preparos reais de 1 e 2 segundos, transição para pronto, histórico, persistência manual, recusa de repetição e entradas inválidas. Um driver C temporário usa wrappers do linker GNU apenas nos testes para simular falhas do relógio/logger e retomada da espera. Nenhum mecanismo de simulação é incluído no programa real. Os testes não alteram os pedidos ou o histórico do projeto.
-
-## Testes de processos e pipe
-
-```bash
-python3 tests/test_processos.py
-```
-
-A suíte verifica processo real, PIDs distintos, histórico com PID do filho, atualização do pai pelo pipe, persistência manual, ausência de menus duplicados e entradas inválidas. Um driver temporário com wrappers GNU simula falhas de criação, comunicação, espera e término do filho, incluindo transferências parciais e `EINTR`. Nenhum desses mecanismos é incluído no programa real.
-
-## Testes de threads
-
-```bash
-python3 -B tests/test_threads.py
-```
-
-A suíte verifica dois pedidos reais, registros completos com mesmo PID, persistência manual, recusas, EOF e falha de histórico sem bloquear as threads. Drivers temporários com wrappers GNU testam falhas de criação, preparo, join e mutex. Uma barreira exclusiva do teste verifica sobreposição das threads sem depender de um limite de tempo de execução. Também verifica encerramento do menu após falha de join e preparo por processo depois dos joins. Esses mecanismos não fazem parte do programa entregue.
-
-## Testes de desempenho
-
-```bash
-python3 -B tests/test_desempenho.py
-```
-
-A suíte compila a aplicação real e verifica cinco resultados, estatísticas, entrada/EOF e preservação dos pedidos, TXT e histórico. Uma compilação adicional usa wrappers GNU apenas nos testes para fornecer tempos conhecidos, conferir cinco buscas medidas e dez leituras de relógio, testar passagem de segundo, tempo zero, intervalo negativo, erros iniciais/finais/tardios e resultado inesperado da consulta. A integração real não exige tempo positivo nem um limite superior estreito.
-
-## Testes de entradas e erros
-
-```bash
-python3 -B tests/test_entradas.py
-```
-
-A suíte verifica EOF nos campos, números parciais, overflow, limites de `int`, recuperação após linhas longas, descrição vazia/UTF-8/99 bytes/CRLF e rejeição de separador, CR interno e NUL. Também cobre operações completas com último campo sem quebra de linha e erro real de entrada com stdin fechado no Linux. Uma compilação temporária usa wrappers GNU apenas nos testes para simular falhas durante leitura e descarte; nenhum mecanismo de teste é incluído no programa entregue.
-
-Para rodar as sete suítes:
+Na raiz, com Linux, GCC e Python 3:
 
 ```bash
 python3 -B -m unittest discover -s tests -v
 ```
 
-A compilação e a execução dos testes dependem de GCC e Linux/POSIX. Se forem pulados por ausência de GCC, a validação continua pendente.
+As suítes compilam em diretórios temporários com `-Wall -Wextra -Werror -pthread`. Os dados de cada cenário também ficam em temporários, sem modificar os TXT reais. Drivers e wrappers GNU simulam falhas somente nos testes; não integram o programa principal.
+
+| Suíte | Métodos | Foco |
+| --- | ---: | --- |
+| [test_persistencia.py](tests/test_persistencia.py) | 13 | Salvar/carregar, formato, limites e falhas de arquivo. |
+| [test_logs.py](tests/test_logs.py) | 11 | Campos, append, validação e erros de E/S. |
+| [test_preparo.py](tests/test_preparo.py) | 12 | Preparo, estado, duração, histórico e falhas simuladas. |
+| [test_processos.py](tests/test_processos.py) | 12 | Filho, PIDs, pipe, atualização do pai e falhas de IPC. |
+| [test_threads.py](tests/test_threads.py) | 18 | Duas tarefas, sobreposição, mutex e falhas de criação/join. |
+| [test_desempenho.py](tests/test_desempenho.py) | 12 | Cinco medições, estatísticas e falhas do relógio. |
+| [test_entradas.py](tests/test_entradas.py) | 21 | Entradas inválidas, limites, EOF e erro de leitura. |
+| **Total** | **99** | **Preparados; execução C ainda pendente.** |
+
+Para executar uma suíte isolada, por exemplo:
+
+```bash
+python3 -B tests/test_persistencia.py
+```
+
+A ausência de GCC pula as sete classes. **Não considerar `OK (skipped=7)` como aprovação.**
+
+### Roteiro curto de demonstração
+
+1. Compile e abra o programa na raiz.
+2. Cadastre pedidos com IDs diferentes; tente repetir um ID e consulte um ID inexistente.
+3. Prepare um pedido com 4 e outro com 5; confira os PIDs e a confirmação pelo pipe.
+4. Prepare dois pedidos ainda pendentes com 6 e consulte os estados e o histórico em 7.
+5. Use 8 com um ID existente e confira as cinco medições e estatísticas.
+6. Salve com 9, saia, reabra e carregue com 10; consulte os dados recuperados.
+7. Verifique também uma entrada inválida e registre os resultados reais.
+
+## Documentação e pendências
+
+- [Relatório técnico em PDF](docs/relatorio.pdf).
+- [Vídeo da fase 1](docs/evidencias/fase1.mp4): registro do menu inicial, não evidência do sistema completo.
+
+Antes da entrega final:
+
+- Compilar e executar as sete suítes no Codespaces; registrar falhas, skips e resultados reais.
+- Acrescentar o teste de **ID duplicado no cadastro**: existe teste de duplicidade no arquivo, mas são cenários diferentes.
+- Corrigir e testar o carregamento de TXT com **NUL embutido**. Atualmente `fgets()` seguido de funções de string pode aceitar o prefixo válido e ignorar um sufixo inválido após NUL.
+- Executar e documentar os dez casos mínimos do professor e coletar as medições reais.
+- Completar o relatório com os resultados e evidências; preparar slides e demonstração ao vivo de 10–15 minutos.

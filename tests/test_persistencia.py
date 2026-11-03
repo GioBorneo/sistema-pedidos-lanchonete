@@ -19,9 +19,10 @@ class TestPersistencia(unittest.TestCase):
         cls.addClassCleanup(cls.compilacao.cleanup)
         cls.programa = Path(cls.compilacao.name) / "programa"
         subprocess.run(
-            ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-o", str(cls.programa),
-             str(RAIZ / "main.c"), str(RAIZ / "pedido.c"), str(RAIZ / "arquivo.c"),
-             str(RAIZ / "log.c"), str(RAIZ / "processo.c"), str(RAIZ / "thread.c")],
+            ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-I", str(RAIZ / "include"),
+             "-o", str(cls.programa),
+             str(RAIZ / "src" / "main.c"), str(RAIZ / "src" / "pedido.c"), str(RAIZ / "src" / "arquivo.c"),
+             str(RAIZ / "src" / "log.c"), str(RAIZ / "src" / "processo.c"), str(RAIZ / "src" / "thread.c")],
             check=True,
         )
 

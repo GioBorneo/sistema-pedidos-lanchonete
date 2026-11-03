@@ -1,8 +1,13 @@
 CC = gcc
+CPPFLAGS = -Iinclude
 CFLAGS = -Wall -Wextra -pthread
 
-programa: main.c pedido.c pedido.h arquivo.c arquivo.h log.c log.h processo.c processo.h thread.c thread.h
-	$(CC) $(CFLAGS) -o programa main.c pedido.c arquivo.c log.c processo.c thread.c
+FONTES = src/main.c src/pedido.c src/arquivo.c src/log.c src/processo.c src/thread.c
+CABECALHOS = include/pedido.h include/arquivo.h include/log.h include/processo.h include/thread.h
 
+programa: $(FONTES) $(CABECALHOS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o programa $(FONTES)
+
+.PHONY: clean
 clean:
 	rm -f programa

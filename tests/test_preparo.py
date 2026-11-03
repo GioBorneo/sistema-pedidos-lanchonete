@@ -73,15 +73,15 @@ class TestPreparo(unittest.TestCase):
         cls.driver = pasta / "teste_preparo"
         fonte = pasta / "teste_preparo.c"
         fonte.write_text(DRIVER, encoding="utf-8")
-        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
+        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-I", str(RAIZ / "include")]
         subprocess.run(
             flags + ["-o", str(cls.programa)] +
-            [str(RAIZ / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")],
+            [str(RAIZ / "src" / nome) for nome in ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")],
             check=True,
         )
         subprocess.run(
-            flags + ["-I", str(RAIZ), "-o", str(cls.driver), str(fonte),
-                     str(RAIZ / "pedido.c"),
+            flags + ["-o", str(cls.driver), str(fonte),
+                     str(RAIZ / "src" / "pedido.c"),
                      "-Wl,--wrap=clock_gettime,--wrap=sleep,--wrap=registrarLog"],
             check=True,
         )

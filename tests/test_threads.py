@@ -157,12 +157,12 @@ class TestThreads(unittest.TestCase):
         falha.write_text(FALHA_JOIN, encoding="utf-8")
         mutex = pasta / "teste_mutex.c"
         mutex.write_text(MUTEX_DRIVER, encoding="utf-8")
-        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread"]
-        fontes = [str(RAIZ / nome) for nome in
+        flags = ["gcc", "-Wall", "-Wextra", "-Werror", "-pthread", "-I", str(RAIZ / "include")]
+        fontes = [str(RAIZ / "src" / nome) for nome in
                   ("main.c", "pedido.c", "arquivo.c", "log.c", "processo.c", "thread.c")]
         subprocess.run(flags + ["-o", str(cls.programa)] + fontes, check=True)
         subprocess.run(
-            flags + ["-I", str(RAIZ), "-o", str(cls.driver), str(fonte), str(RAIZ / "thread.c"),
+            flags + ["-o", str(cls.driver), str(fonte), str(RAIZ / "src" / "thread.c"),
                      "-Wl,--wrap=pthread_create,--wrap=pthread_join,--wrap=prepararPedido"],
             check=True,
         )
@@ -171,7 +171,7 @@ class TestThreads(unittest.TestCase):
             [str(falha), "-Wl,--wrap=pthread_join"], check=True,
         )
         subprocess.run(
-            flags + ["-I", str(RAIZ), "-o", str(cls.mutex_driver), str(mutex), str(RAIZ / "log.c"),
+            flags + ["-o", str(cls.mutex_driver), str(mutex), str(RAIZ / "src" / "log.c"),
                      "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock"], check=True,
         )
 
