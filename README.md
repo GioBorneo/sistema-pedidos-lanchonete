@@ -12,14 +12,14 @@ O projeto reúne cadastro e consulta, persistência em TXT, processos com `fork(
 
 As funcionalidades RF01–RF12 estão implementadas por inspeção do código. **A compilação e a execução completa ainda precisam ser validadas no Codespaces/Linux com GCC.**
 
-A verificação local de 03/11/2026 confirmou a sintaxe dos sete arquivos de teste, com **99 métodos de teste**. Como não há GCC nem `make` no ambiente local, inclusive no Ubuntu/WSL verificado, a descoberta das suítes apresentou:
+A verificação local de 04/11/2026 confirmou a sintaxe dos sete arquivos de teste, agora com **101 métodos de teste**, incluindo regressão para NUL no TXT e ID duplicado no cadastro. Como não há GCC nem `make` no ambiente local, inclusive no Ubuntu/WSL verificado, a descoberta das suítes apresentou:
 
 ```text
 Ran 0 tests
 OK (skipped=7)
 ```
 
-Isso significa **sete classes puladas**, e não 99 testes aprovados. A reorganização das pastas preservou integralmente o conteúdo dos arquivos C e dos cabeçalhos. As evidências finais de execução, os slides e os resultados reais de desempenho continuam pendentes.
+Isso significa **sete classes puladas**, e não 101 testes aprovados. A correção do carregamento com NUL e os dois novos métodos estão preparados, mas a validação C continua pendente. As evidências finais de execução, os slides e os resultados reais de desempenho também continuam pendentes.
 
 ## Ambiente e execução
 
@@ -120,7 +120,7 @@ Formato: `ID;descricao;tempoPreparo;status`, um registro por linha. O tempo é e
 - TXT foi escolhido por ser legível e não exigir biblioteca externa de serialização.
 - Salvar substitui o arquivo anterior; salvar uma lista vazia gera um arquivo vazio.
 - Carregar substitui a lista, não acrescenta registros. Arquivo vazio carrega zero pedidos.
-- O carregamento valida em um vetor temporário antes de substituir a lista atual. Rejeita, entre outros casos, formato inválido, IDs repetidos e excesso de registros. A limitação com NUL está descrita ao final.
+- O carregamento valida em um vetor temporário antes de substituir a lista atual. A leitura com `fgetc()` rejeita NUL embutido antes de interpretar a linha; também verifica formato inválido, IDs repetidos e excesso de registros. A correção e os novos testes ainda precisam de execução com GCC.
 - O salvamento **não é automático**, nem ao sair nem ao concluir o preparo. Para preservar o novo estado, use 9.
 - Arquivos legados com tempo fora de 1–2 segundos podem ser carregados, mas esses pedidos não podem ser preparados.
 - O salvamento não mantém backup nem é transacional: uma falha após abrir para escrita pode deixar um arquivo incompleto.
@@ -160,14 +160,14 @@ As suítes compilam em diretórios temporários com `-Wall -Wextra -Werror -pthr
 
 | Suíte | Métodos | Foco |
 | --- | ---: | --- |
-| [test_persistencia.py](tests/test_persistencia.py) | 13 | Salvar/carregar, formato, limites e falhas de arquivo. |
+| [test_persistencia.py](tests/test_persistencia.py) | 15 | Salvar/carregar, formato, NUL, ID duplicado no cadastro, limites e falhas de arquivo. |
 | [test_logs.py](tests/test_logs.py) | 11 | Campos, append, validação e erros de E/S. |
 | [test_preparo.py](tests/test_preparo.py) | 12 | Preparo, estado, duração, histórico e falhas simuladas. |
 | [test_processos.py](tests/test_processos.py) | 12 | Filho, PIDs, pipe, atualização do pai e falhas de IPC. |
 | [test_threads.py](tests/test_threads.py) | 18 | Duas tarefas, sobreposição, mutex e falhas de criação/join. |
 | [test_desempenho.py](tests/test_desempenho.py) | 12 | Cinco medições, estatísticas e falhas do relógio. |
 | [test_entradas.py](tests/test_entradas.py) | 21 | Entradas inválidas, limites, EOF e erro de leitura. |
-| **Total** | **99** | **Preparados; execução C ainda pendente.** |
+| **Total** | **101** | **Preparados; execução C ainda pendente.** |
 
 Para executar uma suíte isolada, por exemplo:
 
@@ -195,7 +195,6 @@ A ausência de GCC pula as sete classes. **Não considerar `OK (skipped=7)` como
 Antes da entrega final:
 
 - Compilar e executar as sete suítes no Codespaces; registrar falhas, skips e resultados reais.
-- Acrescentar o teste de **ID duplicado no cadastro**: existe teste de duplicidade no arquivo, mas são cenários diferentes.
-- Corrigir e testar o carregamento de TXT com **NUL embutido**. Atualmente `fgets()` seguido de funções de string pode aceitar o prefixo válido e ignorar um sufixo inválido após NUL.
+- Confirmar em execução os novos testes de **ID duplicado no cadastro** e **NUL embutido no TXT**, incluindo a preservação da lista atual após rejeitar o arquivo.
 - Executar e documentar os dez casos mínimos do professor e coletar as medições reais.
 - Completar o relatório com os resultados e evidências; preparar slides e demonstração ao vivo de 10–15 minutos.

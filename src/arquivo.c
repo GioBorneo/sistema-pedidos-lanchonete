@@ -98,18 +98,31 @@ int carregarPedidos(Pedido pedidos[], int *total) {
     char linha[256];
 
     /* So substituimos os pedidos atuais depois de validar o arquivo inteiro. */
-    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+    int caractere;
+    while ((caractere = fgetc(arquivo)) != EOF) {
         Pedido pedido;
         numeroLinha++;
-        size_t tamanho = strlen(linha);
-        if (tamanho == sizeof(linha) - 1) {
-            printf("Erro: linha %d muito longa no arquivo de pedidos.\n", numeroLinha);
-            valido = 0;
+        size_t tamanho = 0;
+        /* Lemos cada byte: strlen pararia no NUL e esconderia o resto da linha.
+         * fgetc retorna int para distinguir um byte valido do valor EOF. */
+        while (caractere != '\n' && caractere != EOF) {
+            if (caractere == '\0') {
+                printf("Erro: byte NUL na linha %d do arquivo de pedidos.\n", numeroLinha);
+                valido = 0;
+                break;
+            }
+            if (tamanho == sizeof(linha) - 1) {
+                printf("Erro: linha %d muito longa no arquivo de pedidos.\n", numeroLinha);
+                valido = 0;
+                break;
+            }
+            linha[tamanho++] = (char) caractere;
+            caractere = fgetc(arquivo);
+        }
+        if (!valido) {
             break;
         }
-        if (tamanho > 0 && linha[tamanho - 1] == '\n') {
-            linha[--tamanho] = '\0';
-        }
+        linha[tamanho] = '\0';
         if (tamanho > 0 && linha[tamanho - 1] == '\r') {
             linha[--tamanho] = '\0'; /* aceita arquivos com quebra de linha do Windows */
         }

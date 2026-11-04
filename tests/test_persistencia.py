@@ -88,6 +88,53 @@ class TestPersistencia(unittest.TestCase):
                 self.assertIn("Descricao: Pedido atual", saida)
                 self.assertNotIn("pedido(s) carregado(s)", saida)
 
+    def test_nul_no_txt_rejeita_carga_e_preserva_lista(self):
+        casos = [
+            b"\x00\n",
+            b"\x001;Batata;1;0\n",
+            b"1\x00;Batata;1;0\n",
+            b"1;Ba\x00tata;1;0\n",
+            b"1;Batata;1\x00;0\n",
+            b"1;Batata;1;\x000\n",
+            b"1;Batata;1;0\x00;extra\n",
+            b"1;Batata;1;0\x00",
+            b"1;Batata;1;0\x00;extra\r\n",
+            b"1;Batata;1;0\x00" + b"a" * 300 + b"\n",
+            b"2;Parcial;1;0\n1;Batata;1;0\x00;extra\n",
+            b"2;Parcial;1;0\n\x00",
+        ]
+        for conteudo in casos:
+            with self.subTest(conteudo=conteudo):
+                self.arquivo.write_bytes(conteudo)
+                saida = self.executar(
+                    "1\n99\nPedido atual\n2\n10\n3\n99\n3\n1\n3\n2\n9\n0\n"
+                )
+                numero_linha = conteudo.split(b"\x00", 1)[0].count(b"\n") + 1
+                self.assertIn(f"byte NUL na linha {numero_linha}", saida)
+                self.assertIn("Os pedidos atuais foram mantidos", saida)
+                self.assertNotIn("pedido(s) carregado(s)", saida)
+                self.assertIn("Descricao: Pedido atual", saida)
+                self.assertIn("Pedido com ID 1 nao encontrado", saida)
+                self.assertIn("Pedido com ID 2 nao encontrado", saida)
+                self.assertEqual(self.arquivo.read_bytes(), b"99;Pedido atual;2;0\n")
+
+    def test_cadastro_rejeita_id_duplicado_sem_alterar_original(self):
+        for id_pedido in [7, 0, -1]:
+            with self.subTest(id_pedido=id_pedido):
+                saida = self.executar(
+                    f"1\n{id_pedido}\nOriginal\n2\n"
+                    f"1\n{id_pedido}\nTentativa duplicada\n1\n"
+                    f"1\n8\nSuco\n1\n3\n{id_pedido}\n9\n0\n"
+                )
+                self.assertIn(f"ja existe um pedido com o ID {id_pedido}", saida)
+                self.assertEqual(saida.count("Pedido cadastrado com sucesso"), 2)
+                self.assertIn("Descricao: Original", saida)
+                self.assertIn("2 pedido(s) salvo(s)", saida)
+                self.assertEqual(
+                    self.arquivo.read_text(),
+                    f"{id_pedido};Original;2;0\n8;Suco;1;0\n",
+                )
+
     def test_limite_de_pedidos(self):
         linhas = "".join(f"{i};Pedido {i};1;0\n" for i in range(50))
         self.gravar(linhas)
