@@ -5,3 +5,4 @@ dados/pedidos.txt
 dados/historico.txt
 dados/*.dat
 data/
+/tests/

@@ -5,7 +5,7 @@
 
 Material de treino para perguntas do professor e da turma. As respostas estão em linguagem de apresentação: curtas, diretas e ligadas ao código real. Não é necessário decorar palavra por palavra; o importante é compreender a ideia e conseguir mostrar onde ela aparece.
 
-> **Estado da validação:** no último registro local, de 03/11/2026, as sete classes de testes foram puladas por falta de GCC. Não há comprovação de execução dos 99 métodos nessa verificação. Antes da apresentação, executar no Codespaces e atualizar as respostas sobre resultados com o que realmente aconteceu. Este documento não executou novos testes.
+> **Para a defesa:** a dupla informou execução bem-sucedida no Codespaces. Preparem o registro dos dez casos exigidos pelo professor, com resultados observados e capturas. As respostas abaixo são um roteiro de estudo, não comprovantes de execução.
 
 ## Como treinar
 
@@ -46,7 +46,7 @@ Material de treino para perguntas do professor e da turma. As respostas estão e
 
 **Resposta sugerida:**
 
-> “Para localizar melhor cada responsabilidade. Em `src` ficam as implementações; em `include`, os tipos e as declarações que os módulos precisam compartilhar. Os testes ficam em `tests`, a documentação em `docs` e os arquivos gerados pelo programa em `dados`.”
+> “Para localizar melhor cada responsabilidade. Em `src` ficam as implementações; em `include`, os tipos e as declarações que os módulos precisam compartilhar. A documentação fica em `docs` e os arquivos gerados pelo programa em `dados`.”
 
 **Se aprofundarem:** incluir um `.h` disponibiliza declarações ao compilador; não executa as funções. Os blocos `#ifndef`/`#define`/`#endif` evitam processar repetidamente o mesmo cabeçalho em uma unidade de compilação.
 
@@ -153,9 +153,9 @@ Material de treino para perguntas do professor e da turma. As respostas estão e
 
 **Resposta sugerida:**
 
-> “O temporário evita substituir a lista atual aos poucos. Se detectamos erro de formato, ID repetido, excesso de registros ou erro de leitura, mantemos a lista anterior. Só copiamos depois da leitura e do fechamento bem-sucedidos. Mas existe uma limitação conhecida com NUL embutido no TXT, ainda pendente de correção.”
+> “O temporário evita substituir a lista atual aos poucos. Se detectamos erro de formato, ID repetido, excesso de registros, NUL embutido ou erro de leitura, mantemos a lista anterior. Só copiamos depois da leitura e do fechamento bem-sucedidos.”
 
-**Se aprofundarem:** funções como `strlen()` param no primeiro byte NUL e podem esconder um sufixo inválido. Portanto, o temporário protege contra os erros detectados; não compensa uma falha do parser em detectar um erro.
+**Se aprofundarem:** funções como `strlen()` param no primeiro byte NUL. Por isso, a leitura usa `fgetc()` e rejeita esse byte antes de interpretar a linha.
 
 **Onde mostrar:** `carregarPedidos()` em [arquivo.c](../src/arquivo.c).
 
@@ -331,21 +331,17 @@ A conversão permite avançar pelo objeto em bytes. Sem ela, somar a um `int *` 
 
 **Se aprofundarem:** a opção não mede preparo nem compara processo e threads. Para conclusões mais fortes, seriam necessárias mais repetições, condições controladas e um experimento apropriado à comparação.
 
-### 33. Por que testar com Python? Os 99 testes passaram?
+### 33. Como vocês verificam os dez casos exigidos?
 
 **Resposta sugerida:**
 
-> “Python automatiza a compilação, envia entradas ao programa C e confere saídas e arquivos. A aplicação continua sendo C. Há 99 métodos preparados, mas no último registro local as sete classes foram puladas por falta de GCC; por isso não podemos dizer que passaram.”
+> “O roteiro cobre cadastro válido e duplicado, consulta válida e inexistente, salvar, carregar, processo, comunicação pelo pipe, threads e entrada inválida. Os casos podem ser executados pelo menu, comparando o resultado observado com o esperado.”
 
-**Se aprofundarem:** `OK (skipped=7)` não é aprovação de 99 testes. Existem ainda lacunas registradas, como o caso específico de ID duplicado no cadastro e o NUL no TXT. Alguns testes usam wrappers para simular falhas; esses resultados não são medições reais de desempenho.
+**Se aprofundarem:** o enunciado não exige automação nem Python. Os testes automatizados usados como apoio ficaram fora da entrega; o programa entregue é C e não depende deles.
 
-**Onde mostrar:** [tests/](../tests/) e estado de validação no [README](../README.md).
+**Onde mostrar:** [roteiro de testes no README](../README.md#testes) e capturas em [evidencias/](evidencias/).
 
-**Antes da defesa:** se houver uma execução posterior, substituir a resposta pelo resultado real, incluindo falhas ou skips. Comando na raiz, em Linux com GCC:
-
-```bash
-python3 -B -m unittest discover -s tests -v
-```
+**Antes da defesa:** preparem os registros reais dos dez casos. Só afirmem aprovação dos cenários que foram executados e conferidos.
 
 ## 7. Perguntas críticas e curiosidades da turma
 
@@ -353,7 +349,7 @@ python3 -B -m unittest discover -s tests -v
 
 **Resposta sugerida:**
 
-> “O sistema é didático: tem limite de 50 pedidos, salvamento manual e menu que espera o preparo. Primeiro precisamos concluir a validação no Linux, corrigir e testar o NUL no TXT e acrescentar o teste de cadastro duplicado. Depois poderíamos melhorar o salvamento para reduzir o risco de arquivo parcial.”
+> “O sistema é didático: tem limite de 50 pedidos, salvamento manual e menu que espera o preparo. Uma melhoria futura seria tornar o salvamento mais seguro para reduzir o risco de arquivo parcial, por exemplo usando um arquivo temporário antes de substituir o original.”
 
 **Se aprofundarem:** também não há exclusão de pedido, cancelamento, múltiplas instâncias coordenadas ou recuperação automática quando filho, pai e log ficam divergentes. Interface gráfica, banco de dados e recursos novos seriam possibilidades futuras, não funcionalidades já prontas.
 
@@ -399,8 +395,8 @@ python3 -B -m unittest discover -s tests -v
 - **“O mutex deixa tudo mais rápido.”** Ele organiza o acesso; o ganho de tempo não é sua finalidade.
 - **“Threads são sempre mais rápidas.”** Depende da tarefa, do ambiente e dos custos envolvidos.
 - **“Fechar o arquivo garante que nunca perderemos dados.”** Não há tal garantia geral.
-- **“Tudo inválido é rejeitado.”** Existe a limitação conhecida com NUL no TXT.
-- **“Os 99 testes passaram.”** Só dizer isso se uma execução real posterior comprovar, informando também eventuais skips.
+- **“Tudo inválido é rejeitado.”** As validações cobrem os casos previstos, mas não são garantia contra qualquer arquivo ou entrada possível.
+- **“Todos os testes passaram.”** Só dizer isso com os resultados observados dos casos executados, não apenas com uma lista de resultados esperados.
 
 ## Se não soubermos responder na hora
 

@@ -1,13 +1,13 @@
 # Guia de estudo — Sistema de Pedidos da Lanchonete
 
 **Autores do projeto: Giovanna Borneo e Felipe Bezerra.**  
-**Referência desta revisão: 03/11/2026.**
+**Referência desta revisão: 11/11/2026.**
 
 Este guia explica o trabalho de dentro para fora: proposta, arquitetura, núcleo de dados, arquivos, funções, decisões e fluxos de execução. É material de estudo para entender e defender o código, não um registro de testes aprovados.
 
-> **Importante:** a implementação foi conferida por leitura. Na última execução local das suítes, faltava GCC e as sete classes foram puladas: `Ran 0 tests` e `OK (skipped=7)`. Compilação C, execução completa e medições reais continuam pendentes no Codespaces.
+> **Importante:** a dupla informou execução bem-sucedida no Codespaces. Os dez casos exigidos pelo professor devem ter resultados observados e capturas registrados. O roteiro deste guia não substitui essas evidências.
 >
-> Este arquivo está em `data/`, uma pasta ignorada pelo Git. Portanto, ele permanece local e não será enviado por um `git add` comum. Não confundir `data/`, de materiais de apoio, com `dados/`, usada pelo programa.
+> Este arquivo está em `docs/`. Não confundir `data/`, de materiais locais de apoio, com `dados/`, usada pelo programa.
 
 ## Como usar este guia
 
@@ -145,28 +145,21 @@ sistema-pedidos-lanchonete/
 │   ├── processo.h               interface da estação de preparo
 │   ├── thread.h                 interface do preparo concorrente
 │   └── log.h                    interface do histórico
-├── tests/                       testes Python da aplicação C
-│   ├── test_persistencia.py
-│   ├── test_logs.py
-│   ├── test_preparo.py
-│   ├── test_processos.py
-│   ├── test_threads.py
-│   ├── test_desempenho.py
-│   └── test_entradas.py
 ├── dados/                       arquivos usados durante a execução
 │   ├── .gitkeep                 mantém a pasta no repositório
 │   ├── pedidos.txt              gerado pela opção 9; ignorado pelo Git
 │   └── historico.txt            gerado pelos preparos; ignorado pelo Git
 ├── docs/                        documentação de entrega
 │   ├── relatorio.pdf            relatório técnico
+│   ├── GUIA_DO_PROJETO.md       este guia
+│   ├── PERGUNTAS_E_RESPOSTAS_APRESENTACAO.md
 │   └── evidencias/
 │       └── fase1.mp4             vídeo antigo do menu inicial
 ├── data/                        apoio local; pasta ignorada pelo Git
 │   ├── Trabalho-Pratico-Integrador.pdf
 │   ├── PLANO.md
 │   ├── relatorio.html           fonte local do relatório
-│   ├── fase1.mp4                cópia local do vídeo inicial
-│   └── GUIA_DO_PROJETO.md       este guia
+│   └── fase1.mp4                cópia local do vídeo inicial
 ├── .devcontainer/
 │   └── devcontainer.json        configuração do Codespaces
 ├── .git/                        histórico e metadados do Git
@@ -198,8 +191,8 @@ Os dois TXT de `dados/` podem não existir antes do primeiro salvamento/preparo.
 | Como as estatísticas são calculadas | [main.c](../src/main.c), `medirDesempenho()`. |
 | Como compilar | [Makefile](../Makefile). |
 | Como executar e quais são as pendências | [README.md](../README.md). |
-| O que o professor pediu | [Enunciado](Trabalho-Pratico-Integrador.pdf). |
-| Planejamento histórico das fases | [PLANO.md](PLANO.md); pode conter caminhos anteriores à reorganização. |
+| O que o professor pediu | Enunciado em `data/Trabalho-Pratico-Integrador.pdf`, material de apoio local não incluído na entrega. |
+| Planejamento histórico das fases | `data/PLANO.md`, material local que pode conter caminhos anteriores à reorganização. |
 | Documento de entrega | [Relatório em PDF](../docs/relatorio.pdf). |
 
 ### 3.3 Por que separar `src/` e `include/`
@@ -503,7 +496,7 @@ A separação dos campos é manual e preserva descrição vazia. O carregamento 
 
 Arquivo válido substitui a lista inteira; não mescla os registros. Arquivo vazio resulta em `total = 0`. Tempos legados fora de um ou dois segundos são preservados ao carregar, mas o preparo os recusa.
 
-**Limitação conhecida:** NUL embutido pode fazer as funções de string enxergarem só o prefixo da linha. Portanto, ainda não é correto prometer rejeição de todo arquivo corrompido. Esse caso e seu teste de regressão estão pendentes.
+**Cuidado na leitura:** funções de string param no primeiro NUL. Por isso, o carregamento usa `fgetc()` para ler cada byte e rejeitar NUL embutido antes de interpretar a linha, preservando a lista atual se o arquivo for recusado.
 
 ## 8. processo.c: filho e comunicação por pipe
 
@@ -839,7 +832,7 @@ Os blocos `#ifndef`, `#define` e `#endif` são proteções para evitar processar
 
 | Recurso | Uso no projeto |
 | --- | --- |
-| `stdio.h` | Terminal e arquivos: `printf`, `getchar`, `fopen`, `fprintf`, `fgets`, `fclose`, `perror`. |
+| `stdio.h` | Terminal e arquivos: `printf`, `getchar`, `fopen`, `fprintf`, `fgetc`, `fclose`, `perror`. |
 | `stdlib.h` | Conversão com `strtol` e encerramento com `exit`. |
 | `string.h` | Operações de string, cópia, busca de separador e `strerror`. |
 | `time.h` | Relógio monotônico e data/hora do histórico. |
@@ -864,7 +857,7 @@ Arquivo: [Makefile](../Makefile).
 - `clean`: remove somente `programa`.
 - `.PHONY: clean`: informa que `clean` é uma ação, não um arquivo de saída.
 
-Não usamos arquivos `.o` intermediários no Makefile atual. Compilar tudo em uma regra é suficiente para este tamanho e mantém o build simples. Os testes acrescentam `-Werror`, mas o Makefile principal não o usa.
+Não usamos arquivos `.o` intermediários no Makefile atual. Compilar tudo em uma regra é suficiente para este tamanho e mantém o build simples.
 
 Comandos, no terminal Linux/Codespaces, a partir da raiz:
 
@@ -884,43 +877,26 @@ make clean
 ### 13.4 Arquivos de suporte
 
 - [devcontainer.json](../.devcontainer/devcontainer.json): seleciona imagem C/C++ com Ubuntu 24.04 e extensão C/C++ do VS Code para o Codespaces. Não contém a lógica dos pedidos.
-- [.gitignore](../.gitignore): ignora executável, objetos, TXT gerados, antigos `.dat` de dados e toda a pasta `data/`.
+- [.gitignore](../.gitignore): ignora executável, objetos, TXT gerados, antigos `.dat` de dados e as pastas locais `data/` e `tests/`.
 - [dados/.gitkeep](../dados/.gitkeep): arquivo vazio convencional para manter a pasta no Git; não é dado de pedido nem lido pelo programa.
 - [README.md](../README.md): manual de entrada para compilar, usar e localizar a documentação.
 - [relatorio.pdf](../docs/relatorio.pdf): texto técnico destinado à avaliação; não substitui o código nem os testes.
 - [fase1.mp4](../docs/evidencias/fase1.mp4): evidência antiga do menu inicial, não demonstração final de processos/threads/IPC.
-- [relatorio.html](relatorio.html): fonte editável local atualmente guardada em `data/`; não acompanha o repositório.
+- [relatorio.html](relatorio.html): fonte editável do relatório simplificado, em `docs/`.
 
 ## 14. Testes e requisitos do professor
 
-### 14.1 Por que os testes são Python se a aplicação é C
+### 14.1 O que é exigido
 
-Python automatiza a compilação e a interação com o executável: envia entradas, captura saídas e confere arquivos/resultados. A aplicação entregue continua sendo C; não depende de Python para executar seu menu.
+O professor exige pelo menos dez casos, cobrindo situações normais e de erro. Não exige Python nem testes automatizados. O programa e sua compilação dependem das ferramentas de C, não de Python.
 
-As suítes usam pastas temporárias para compilar e para executar cada cenário com uma pasta `dados/` própria. Isso evita modificar pedidos e histórico reais durante os testes.
+Os testes automatizados usados como apoio ficam somente na pasta local `tests/`, ignorada pelo Git. Eles não acompanham a entrega.
 
-Algumas suítes geram pequenos drivers C e usam wrappers do linker GNU para simular falhas. São instrumentos de teste, não caminhos ocultos do programa principal. O teste com relógio controlado, por exemplo, serve para conferir a conta, não para produzir uma medição real.
+### 14.2 Como realizar os dez casos
 
-### 14.2 O que há em cada suíte
+O [roteiro de testes no README](../README.md#testes) descreve os passos pelo menu e os resultados esperados para cadastro válido, ID duplicado, consulta válida, consulta inexistente, salvar, carregar, processo, IPC, threads e entrada inválida.
 
-| Arquivo | Métodos | Assunto |
-| --- | ---: | --- |
-| [test_persistencia.py](../tests/test_persistencia.py) | 13 | Salvar, reabrir, carregar, preservar estados, formato inválido, capacidade, duplicidade no TXT e erros de arquivo. |
-| [test_logs.py](../tests/test_logs.py) | 11 | Formato, append, data/hora, PID, parâmetros e falhas de E/S do histórico. |
-| [test_preparo.py](../tests/test_preparo.py) | 12 | Espera simulada, estado pronto, log, recusa de repetição e falhas de relógio/logger. |
-| [test_processos.py](../tests/test_processos.py) | 12 | Filho real quando executado, PIDs, pipe, estado no pai, transferências parciais e falhas. |
-| [test_threads.py](../tests/test_threads.py) | 18 | Dois pedidos, logs, sobreposição por barreira de teste, criação parcial, join e mutex. |
-| [test_desempenho.py](../tests/test_desempenho.py) | 12 | Cinco medições, estatísticas, casos de relógio e preservação dos dados. |
-| [test_entradas.py](../tests/test_entradas.py) | 21 | EOF, números parciais, overflow, linhas longas, descrições e erros de leitura. |
-| **Total** | **99** | **Métodos preparados; não aprovados em execução nesta revisão.** |
-
-Rodar todas, na raiz e em Linux com GCC:
-
-```bash
-python3 -B -m unittest discover -s tests -v
-```
-
-O `-B` evita gerar caches Python. A descoberta encontra as suítes; se não houver GCC, os testes não compilam nem executam o programa C e as classes são puladas.
+Execute os casos, anote o resultado observado e guarde capturas em `docs/evidencias/`. Nos cenários de preparo, use pedidos ainda pendentes. Salvar substitui o TXT anterior, então preserve os dados importantes antes dos testes.
 
 ### 14.3 Onde cada requisito é atendido por implementação
 
@@ -931,7 +907,7 @@ O `-B` evita gerar caches Python. A descoberta encontra as suítes; se não houv
 | RF03 — Consultar | `pedido.c`, com exibição em `main.c`. |
 | RF04 — Executar | `prepararPedido()` em `pedido.c`. |
 | RF05 — Salvar | `salvarPedidos()` em `arquivo.c`. |
-| RF06 — Carregar | `carregarPedidos()` em `arquivo.c`, com limitação NUL pendente. |
+| RF06 — Carregar | `carregarPedidos()` em `arquivo.c`, com rejeição de NUL na leitura byte a byte. |
 | RF07 — Criar processo | `processo.c`, `fork()` e `waitpid()`. |
 | RF08 — IPC | `processo.c`, pipe filho → pai. |
 | RF09 — Threads | `thread.c`, duas criações e joins. |
@@ -943,11 +919,9 @@ O `-B` evita gerar caches Python. A descoberta encontra as suítes; se não houv
 
 Os dez cenários mínimos são: cadastro válido; ID duplicado no cadastro; consulta válida; consulta inexistente; salvar; carregar; criar filho; receber mensagem por IPC; executar duas tarefas com threads; entrada inválida.
 
-Há testes preparados para nove desses cenários. Falta o caso específico de repetir o ID **no cadastro**. Testar IDs duplicados no arquivo carregado não comprova o mesmo caminho. A checagem de duplicidade existe no código, mas falta sua comprovação específica.
+A dupla informou que a execução no Codespaces ocorreu com sucesso. Para documentar os dez casos individualmente, registre entrada, resultado esperado, resultado observado e a evidência correspondente.
 
-Também falta o teste de NUL no arquivo TXT. A rejeição de NUL na entrada do terminal não cobre automaticamente o parser de arquivo.
-
-O relatório e este guia não devem ser usados para afirmar que os testes passaram. A ordem segura é executar, observar, registrar e só depois atualizar os resultados documentados.
+O relatório e este guia apresentam o roteiro, não uma tabela de resultados obtidos. Só marque um caso como aprovado depois de observar seu comportamento.
 
 ## 15. Revisão das escolhas e limitações
 
@@ -985,9 +959,9 @@ Esses pontos são observações sobre a implementação, não uma certificação
 
 ### 15.3 Pendências e cuidados reais
 
-1. **Validar no Codespaces:** GCC/make e execução C não foram comprovados localmente. `OK (skipped=7)` não significa aprovação.
-2. **NUL no TXT:** corrigir a possibilidade de aceitar só o prefixo válido e acrescentar teste de regressão.
-3. **ID repetido no cadastro:** acrescentar o teste do cenário pedido pelo professor.
+1. **Registrar a validação:** documentar os dez casos pelo menu com resultados observados e capturas do Codespaces.
+2. **NUL no TXT:** o carregamento já rejeita esse byte antes de interpretar a linha.
+3. **ID repetido no cadastro:** incluir a recusa e a preservação do original no registro dos dez casos.
 4. **Persistência não atômica:** falha ao salvar pode afetar o arquivo anterior; não há backup.
 5. **Resultado parcial:** pedido pronto pode ficar sem log; o filho pode preparar sem confirmação no pai.
 6. **Instâncias independentes:** não há proteção geral para dois programas gravando os mesmos dados ao mesmo tempo.
@@ -1071,13 +1045,13 @@ Não. Atendem ao mínimo didático, mas a operação é curta e a amostra pequen
 
 **Todos os testes passaram?**
 
-Ainda não há esse resultado. A sintaxe dos 99 métodos foi verificada, mas a execução local pulou sete classes por falta de GCC. É necessário executar em Linux com compilador e registrar o resultado real.
+A dupla informou execução bem-sucedida no Codespaces. Na defesa, mostrem os resultados registrados para cada um dos dez casos, sem confundir o resultado esperado com o observado.
 
 ### 16.3 Demonstração sugerida
 
 Realizar no Codespaces, depois de validar compilação e testes:
 
-1. Mostrar a árvore e explicar rapidamente `src/`, `include/`, `tests/` e `dados/`.
+1. Mostrar a árvore e explicar rapidamente `src/`, `include/`, `docs/` e `dados/`.
 2. Compilar e abrir pela raiz.
 3. Cadastrar pedidos distintos e mostrar recusa de ID repetido e consulta inexistente.
 4. Preparar um pedido com a opção 4 e consultar seu estado.

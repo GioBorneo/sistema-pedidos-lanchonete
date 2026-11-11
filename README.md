@@ -10,20 +10,13 @@ O projeto reúne cadastro e consulta, persistência em TXT, processos com `fork(
 
 ## Estado da validação
 
-As funcionalidades RF01–RF12 estão implementadas por inspeção do código. **A compilação e a execução completa ainda precisam ser validadas no Codespaces/Linux com GCC.**
+As funcionalidades RF01–RF12 estão implementadas. A dupla informou que a execução no Codespaces ocorreu com sucesso. Para a entrega, os resultados dos dez casos de teste devem ser documentados com as evidências reais, junto das medições de desempenho.
 
-A verificação local de 04/11/2026 confirmou a sintaxe dos sete arquivos de teste, agora com **101 métodos de teste**, incluindo regressão para NUL no TXT e ID duplicado no cadastro. Como não há GCC nem `make` no ambiente local, inclusive no Ubuntu/WSL verificado, a descoberta das suítes apresentou:
-
-```text
-Ran 0 tests
-OK (skipped=7)
-```
-
-Isso significa **sete classes puladas**, e não 101 testes aprovados. A correção do carregamento com NUL e os dois novos métodos estão preparados, mas a validação C continua pendente. As evidências finais de execução, os slides e os resultados reais de desempenho também continuam pendentes.
+O roteiro abaixo apresenta os passos e os resultados esperados; não substitui o registro do que foi observado em cada caso.
 
 ## Ambiente e execução
 
-O sistema tem como alvo **Linux/POSIX**, com GCC, GNU make e suporte a `pthreads`. Python 3 é usado apenas nos testes, não pelo programa C. O Windows nativo não é o ambiente de execução previsto.
+O sistema tem como alvo **Linux/POSIX**, com GCC, GNU make e suporte a `pthreads`. Não é necessário Python para compilar ou executar o programa. O Windows nativo não é o ambiente de execução previsto.
 
 ### GitHub Codespaces
 
@@ -59,7 +52,6 @@ sistema-pedidos-lanchonete/
 │   ├── thread.c
 │   └── log.c
 ├── include/              # interfaces dos módulos (.h)
-├── tests/                # sete suítes Python
 ├── dados/                # pedidos.txt e historico.txt durante o uso
 ├── docs/
 │   ├── relatorio.pdf
@@ -120,7 +112,7 @@ Formato: `ID;descricao;tempoPreparo;status`, um registro por linha. O tempo é e
 - TXT foi escolhido por ser legível e não exigir biblioteca externa de serialização.
 - Salvar substitui o arquivo anterior; salvar uma lista vazia gera um arquivo vazio.
 - Carregar substitui a lista, não acrescenta registros. Arquivo vazio carrega zero pedidos.
-- O carregamento valida em um vetor temporário antes de substituir a lista atual. A leitura com `fgetc()` rejeita NUL embutido antes de interpretar a linha; também verifica formato inválido, IDs repetidos e excesso de registros. A correção e os novos testes ainda precisam de execução com GCC.
+- O carregamento valida em um vetor temporário antes de substituir a lista atual. A leitura com `fgetc()` rejeita NUL embutido antes de interpretar a linha; também verifica formato inválido, IDs repetidos e excesso de registros.
 - O salvamento **não é automático**, nem ao sair nem ao concluir o preparo. Para preservar o novo estado, use 9.
 - Arquivos legados com tempo fora de 1–2 segundos podem ser carregados, mas esses pedidos não podem ser preparados.
 - O salvamento não mantém backup nem é transacional: uma falha após abrir para escrita pode deixar um arquivo incompleto.
@@ -150,32 +142,24 @@ A consulta é curta: resolução e custo do relógio, cache, posição do ID e c
 
 ## Testes
 
-Na raiz, com Linux, GCC e Python 3:
+O enunciado exige pelo menos dez casos, mas não exige automação nem Python. Eles podem ser realizados pelo menu. Os testes automatizados usados como apoio local não fazem parte da entrega e sua pasta é ignorada pelo Git.
 
-```bash
-python3 -B -m unittest discover -s tests -v
-```
+Compile com `make` e abra com `./programa`. Use este roteiro em uma sessão de teste:
 
-As suítes compilam em diretórios temporários com `-Wall -Wextra -Werror -pthread`. Os dados de cada cenário também ficam em temporários, sem modificar os TXT reais. Drivers e wrappers GNU simulam falhas somente nos testes; não integram o programa principal.
+| Caso | Como testar | Resultado esperado |
+| --- | --- | --- |
+| 1. Cadastro válido | Opção 1: ID 1, Hamburguer, 1 segundo. | Pedido cadastrado como PENDENTE. |
+| 2. ID duplicado | Opção 1: tentar cadastrar o ID 1 novamente. | Recusa, sem alterar o pedido original. |
+| 3. Consulta válida | Opção 3: consultar ID 1. | Dados do pedido exibidos. |
+| 4. Consulta inexistente | Opção 3: consultar ID 999, sem cadastrá-lo. | Mensagem de pedido não encontrado. |
+| 5. Salvar | Opção 9. | Confirmação e arquivo `dados/pedidos.txt` gravado. |
+| 6. Carregar | Sair com 0, reabrir, usar 10 e consultar ID 1. | Pedido recuperado com os mesmos dados. |
+| 7. Criar processo | Opção 5: preparar ID 1 ainda pendente. | Mensagens do pai e do filho com PIDs diferentes. |
+| 8. IPC | Após o caso 7, observar a confirmação do pipe e consultar ID 1. | Pai recebe o resultado e exibe PRONTO. |
+| 9. Threads | Cadastrar IDs 2 e 3 pendentes; opção 6 com esses IDs. | Dois preparos iniciados antes das conclusões; ambos PRONTO e registrados no histórico (7). |
+| 10. Entrada inválida | No menu, digitar `abc`. | Entrada recusada e nova solicitação, sem executar operação. |
 
-| Suíte | Métodos | Foco |
-| --- | ---: | --- |
-| [test_persistencia.py](tests/test_persistencia.py) | 15 | Salvar/carregar, formato, NUL, ID duplicado no cadastro, limites e falhas de arquivo. |
-| [test_logs.py](tests/test_logs.py) | 11 | Campos, append, validação e erros de E/S. |
-| [test_preparo.py](tests/test_preparo.py) | 12 | Preparo, estado, duração, histórico e falhas simuladas. |
-| [test_processos.py](tests/test_processos.py) | 12 | Filho, PIDs, pipe, atualização do pai e falhas de IPC. |
-| [test_threads.py](tests/test_threads.py) | 18 | Duas tarefas, sobreposição, mutex e falhas de criação/join. |
-| [test_desempenho.py](tests/test_desempenho.py) | 12 | Cinco medições, estatísticas e falhas do relógio. |
-| [test_entradas.py](tests/test_entradas.py) | 21 | Entradas inválidas, limites, EOF e erro de leitura. |
-| **Total** | **101** | **Preparados; execução C ainda pendente.** |
-
-Para executar uma suíte isolada, por exemplo:
-
-```bash
-python3 -B tests/test_persistencia.py
-```
-
-A ausência de GCC pula as sete classes. **Não considerar `OK (skipped=7)` como aprovação.**
+Anote o resultado observado de cada caso e guarde capturas em `docs/evidencias/`, incluindo compilação, execução, processos, IPC, threads e testes. A tabela descreve resultados esperados, não resultados já registrados. Salvar no caso 5 substitui o TXT anterior; preserve os dados que quiser manter antes de testar.
 
 ### Roteiro curto de demonstração
 
@@ -194,7 +178,6 @@ A ausência de GCC pula as sete classes. **Não considerar `OK (skipped=7)` como
 
 Antes da entrega final:
 
-- Compilar e executar as sete suítes no Codespaces; registrar falhas, skips e resultados reais.
-- Confirmar em execução os novos testes de **ID duplicado no cadastro** e **NUL embutido no TXT**, incluindo a preservação da lista atual após rejeitar o arquivo.
-- Executar e documentar os dez casos mínimos do professor e coletar as medições reais.
+- Executar e documentar os dez casos mínimos do professor conforme o roteiro acima.
+- Guardar as capturas exigidas e coletar as cinco medições reais da opção 8, com menor, maior e média.
 - Completar o relatório com os resultados e evidências; preparar slides e demonstração ao vivo de 10–15 minutos.

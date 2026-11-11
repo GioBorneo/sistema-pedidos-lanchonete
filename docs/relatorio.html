@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Sistema de Pedidos da Lanchonete — Relatório técnico</title>
+<style>
+  body { font-family: sans-serif; font-size: 11pt; line-height: 1.32; color: #222; }
+  h1 { font-size: 20pt; margin: 0 0 8pt; color: #233c50; }
+  h2 { font-size: 14pt; margin: 16pt 0 8pt; color: #233c50; }
+  h3 { font-size: 11.5pt; margin: 12pt 0 5pt; }
+  p { margin: 0 0 8pt; }
+  ul, ol { margin: 4pt 0 10pt; padding-left: 19pt; }
+  li { margin-bottom: 4pt; }
+  .identificacao { font-size: 10pt; color: #444; margin-bottom: 16pt; }
+  .pagina { page-break-before: always; }
+  h2, h3 { page-break-after: avoid; }
+  table { page-break-inside: avoid; }
+  .nota { font-size: 10pt; margin-top: 10pt; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0 10pt; font-size: 10pt; }
+  th, td { border: 0.5pt solid #ccc; padding: 5pt 6pt; text-align: left; vertical-align: top; }
+  th { font-weight: bold; }
+  code { font-family: monospace; font-size: 9pt; }
+  pre { font-family: monospace; font-size: 9pt; padding: 4pt; white-space: pre-wrap; }
+  .referencias { font-size: 9pt; }
+  a { color: #233c50; }
+</style>
+</head>
+<body>
+<h1>Sistema de Pedidos da Lanchonete</h1>
+<p class="identificacao"><b>Relatório técnico — Trabalho Prático Integrador</b><br>
+Programação de Software Básico em C<br>
+<b>Autores:</b> Giovanna Borneo e Felipe Bezerra<br>
+Versão: 11 de novembro de 2026</p>
+
+<h2>1. Introdução e objetivos</h2>
+<p>Este trabalho apresenta um sistema de terminal em C para cadastrar e acompanhar pedidos de uma lanchonete. O tema foi escolhido para representar as tarefas propostas no enunciado: cada pedido tem uma identificação, uma descrição, um tempo de preparo e um estado.</p>
+<p>O objetivo é reunir os conteúdos da disciplina em um programa simples: estruturas, vetores, ponteiros, arquivos, processos, comunicação entre processos e threads. O usuário pode cadastrar, listar, consultar e preparar pedidos, além de salvar os dados e consultar o histórico.</p>
+<p>O preparo é uma simulação com <code>sleep()</code> de um ou dois segundos. Não existe integração com equipamentos de cozinha. Essa espera permite observar o início e o término da tarefa e comparar como o código organiza a execução normal, o processo filho e as threads.</p>
+
+<h2>2. Fundamentação teórica e requisitos</h2>
+<p>Usamos uma <code>struct</code> para reunir os campos de cada pedido e um vetor para guardar a lista. Os ponteiros permitem que as funções alterem um pedido ou o contador de registros do chamador.</p>
+<p>Um processo possui seu próprio espaço de memória. Por isso, o filho criado com <code>fork()</code> precisa comunicar seu resultado ao pai. Já as threads pertencem ao mesmo processo e compartilham sua memória. O mutex controla o acesso à parte que não deve ser usada pelas duas threads ao mesmo tempo.</p>
+<p>As funções do programa foram organizadas de acordo com os requisitos:</p>
+<ul>
+<li><b>RF01 a RF04:</b> cadastrar, listar, consultar e executar o preparo.</li>
+<li><b>RF05 e RF06:</b> salvar e carregar a lista em arquivo.</li>
+<li><b>RF07 a RF09:</b> criar um processo, usar IPC por pipe e executar dois pedidos com threads.</li>
+<li><b>RF10 e RF11:</b> registrar o histórico e medir uma operação repetida.</li>
+<li><b>RF12:</b> tratar entradas inválidas e falhas dos recursos utilizados.</li>
+</ul>
+
+<div class="pagina">
+<h2>3. Arquitetura e desenvolvimento</h2>
+<p>Dividimos o código em módulos pequenos para separar as responsabilidades e facilitar a leitura:</p>
+<table>
+<tr><th>Arquivo em src/</th><th>Responsabilidade</th></tr>
+<tr><td>main.c</td><td>Menu, leitura das entradas, chamadas dos módulos e medição de consulta.</td></tr>
+<tr><td>pedido.c</td><td>Cadastro, listagem, busca por ID e preparo do pedido.</td></tr>
+<tr><td>arquivo.c</td><td>Salvar e carregar os pedidos em TXT.</td></tr>
+<tr><td>processo.c</td><td>Criar o filho, comunicar pelo pipe e aguardar o término.</td></tr>
+<tr><td>thread.c</td><td>Criar e aguardar as duas threads de preparo.</td></tr>
+<tr><td>log.c</td><td>Registrar e mostrar o histórico, com mutex na gravação.</td></tr>
+</table>
+<p>Os cabeçalhos ficam em <code>include/</code>, a documentação em <code>docs/</code> e os arquivos gerados em <code>dados/</code>. O Makefile compila os módulos com <code>-Wall -Wextra -pthread</code>. A execução deve partir da raiz do projeto: <code>make</code> e depois <code>./programa</code>.</p>
+<p>A lista principal é um vetor de até 50 pedidos, mantido em <code>main()</code>. Cada registro possui ID único, descrição de até 99 bytes, tempo de preparo e estado PENDENTE ou PRONTO. A busca é linear: percorre as posições ocupadas até encontrar o ID. Escolhemos o vetor fixo por ser suficiente para o escopo e dispensar alocação dinâmica.</p>
+<p>A função <code>prepararPedido()</code> é o núcleo da execução. Ela valida o pedido, aguarda o tempo indicado, muda o estado para PRONTO e tenta registrar o histórico. Essa mesma função é usada pelos três modos, evitando repetir a regra de preparo.</p>
+
+<h2>4. Processos, threads e IPC</h2>
+<p>Na opção 5, o programa cria um pipe e depois chama <code>fork()</code>. O filho prepara sua cópia do pedido e envia um inteiro com o estado final. O pai recebe a mensagem, aguarda o filho com <code>waitpid()</code> e só confirma PRONTO após verificar o resultado e o término normal. Cada processo fecha a ponta do pipe que não utiliza.</p>
+<p>Na opção 6, duas threads recebem os endereços de pedidos diferentes. As duas são criadas antes dos <code>pthread_join()</code>, permitindo a sobreposição dos preparos. Como alteram elementos distintos e o menu aguarda o término, não usamos mutex nos campos dos pedidos nesse fluxo.</p>
+<p>O histórico é compartilhado pelas threads. Por isso, o mutex protege a abertura, a escrita e o fechamento do arquivo, mas não a espera do preparo. O menu aguarda tanto o processo quanto as threads; não há atendimento de novos comandos em segundo plano.</p>
+</div>
+
+<div class="pagina">
+<h2>5. Persistência, logs e testes</h2>
+<h3>Persistência e histórico</h3>
+<p>Escolhemos TXT porque os registros são pequenos, o conteúdo pode ser conferido no editor e não é necessária uma biblioteca externa. O enunciado permite texto ou binário. Cada linha de <code>dados/pedidos.txt</code> segue o formato <code>ID;descricao;tempoPreparo;status</code>. Exemplo ilustrativo:</p>
+<pre>1;X-burger e suco;2;0
+2;Batata frita;1;1</pre>
+<p>O estado 0 significa PENDENTE e 1, PRONTO. Como o ponto e vírgula separa os campos, ele não é aceito na descrição. Salvar e carregar são ações manuais: a opção 9 substitui o TXT, e a opção 10 substitui a lista em memória.</p>
+<p>O carregamento usa um vetor temporário e só altera a lista atual depois das verificações. A leitura rejeita NUL embutido antes de interpretar a linha. Também são verificados formato, limite de registros e IDs repetidos.</p>
+<p>O arquivo <code>dados/historico.txt</code> recebe data e hora, PID, ID do pedido, estado e duração. Ele acrescenta registros sem apagar os anteriores. O histórico registra eventos de preparo; não substitui o salvamento da lista.</p>
+
+<h3>Roteiro de testes</h3>
+<p>O enunciado exige pelo menos dez casos de teste, sem exigir automação. O roteiro pode ser executado pelo menu, com registro dos resultados observados e capturas de tela. A tabela apresenta os resultados esperados:</p>
+<table>
+<tr><th>Caso</th><th>Resultado esperado</th></tr>
+<tr><td>1. Cadastro válido</td><td>Pedido inserido na lista.</td></tr>
+<tr><td>2. ID duplicado</td><td>Cadastro recusado sem alterar o original.</td></tr>
+<tr><td>3. Consulta válida</td><td>Dados do pedido exibidos.</td></tr>
+<tr><td>4. Consulta inexistente</td><td>Mensagem de não encontrado.</td></tr>
+<tr><td>5 e 6. Salvar e carregar</td><td>Arquivo gravado e lista recuperada.</td></tr>
+<tr><td>7 e 8. Processo e IPC</td><td>Filho criado e resultado recebido pelo pai.</td></tr>
+<tr><td>9. Threads</td><td>Dois pedidos preparados.</td></tr>
+<tr><td>10. Entrada inválida</td><td>Erro informado sem executar a operação inválida.</td></tr>
+</table>
+</div>
+
+<div class="pagina">
+<h2>6. Desempenho, problemas e conclusão</h2>
+<h3>Medição de desempenho</h3>
+<p>A opção 8 mede cinco consultas pelo mesmo ID. Para cada repetição, usamos <code>clock_gettime(CLOCK_MONOTONIC)</code> antes e depois da busca e calculamos a diferença em milissegundos. A leitura do usuário, a impressão e as estatísticas ficam fora do intervalo medido.</p>
+<p>Depois, o programa apresenta os cinco tempos, o menor, o maior e a média. Cinco repetições atendem ao mínimo do enunciado, mas uma busca em até 50 registros é muito curta. A resolução do relógio, o cache e a carga do sistema influenciam os valores. Portanto, essa amostra não permite afirmar estabilidade nem ganho de velocidade com threads.</p>
+
+
+<h3>Conclusão</h3>
+<p>O projeto reúne os conteúdos de C e sistemas operacionais em um exemplo de fácil acompanhamento. A principal diferença demonstrada é que o filho precisa comunicar seu resultado, enquanto as threads compartilham o vetor e exigem cuidado com o histórico comum.</p>
+
+<h3>Referências</h3>
+<div class="referencias">
+<p>Enunciado do Trabalho Prático Integrador — Programação de Software Básico em C. Material fornecido pelo professor, especialmente requisitos, persistência, medição, testes e relatório (pp. 7, 12, 14, 18 e 20).</p>
+</div>
+</div>
+</body>
+</html>
