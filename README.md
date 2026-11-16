@@ -20,7 +20,7 @@ O sistema tem como alvo **Linux/POSIX**, com GCC, GNU make e suporte a `pthreads
 
 ### GitHub Codespaces
 
-1. Abra o repositório no GitHub e selecione a branch desejada.
+1. Abra o repositório no GitHub e selecione a branch **`main`**, que reúne a versão atual para entrega.
 2. Use **Code > Codespaces** para abrir ou criar o ambiente.
 3. Aguarde o carregamento da configuração em [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json), baseada em Ubuntu 24.04 com ferramentas C/C++.
 4. No terminal, na raiz do projeto, execute:
@@ -40,6 +40,12 @@ make clean
 
 A limpeza não apaga os pedidos, o histórico ou a documentação.
 
+### Baixar o projeto em ZIP
+
+No GitHub, selecione a branch **`main`** e use **Code > Download ZIP**. Extraia o arquivo e abra a pasta que contém o Makefile. Não é necessário juntar arquivos das outras branches.
+
+O ZIP inclui somente os arquivos versionados na `main`. Os testes automatizados locais e os TXT gerados durante o uso não acompanham o download. Consulte as pendências ao final deste README antes de fechar a entrega.
+
 ## Organização
 
 ```text
@@ -55,8 +61,13 @@ sistema-pedidos-lanchonete/
 ├── dados/                # pedidos.txt e historico.txt durante o uso
 ├── docs/
 │   ├── relatorio.pdf
+│   ├── relatorio.html    # fonte editável do relatório
+│   ├── GUIA_DO_PROJETO.md
+│   ├── PERGUNTAS_E_RESPOSTAS_APRESENTACAO.md
+│   ├── CHECKLIST_FINAL_ENTREGA.docx
 │   └── evidencias/
-│       └── fase1.mp4     # vídeo antigo do menu inicial
+│       ├── evidencia video.mp4  # demonstração do programa
+│       └── fase1.mp4            # vídeo antigo do menu inicial
 ├── .devcontainer/
 ├── Makefile
 ├── README.md
@@ -173,8 +184,12 @@ Anote o resultado observado de cada caso e guarde capturas em `docs/evidencias/`
 
 ## Documentação e pendências
 
-- [Relatório técnico em PDF](docs/relatorio.pdf).
-- [Vídeo da fase 1](docs/evidencias/fase1.mp4): registro do menu inicial, não evidência do sistema completo.
+- [Relatório técnico em PDF](docs/relatorio.pdf) e [fonte editável em HTML](docs/relatorio.html).
+- [Vídeo de demonstração](docs/evidencias/evidencia%20video.mp4): cadastro, consulta, preparo sequencial, threads, histórico e salvar/carregar. Não substitui as capturas exigidas nem comprova todos os cenários de teste.
+- [Guia do projeto](docs/GUIA_DO_PROJETO.md): arquitetura, módulos e explicações do código.
+- [Perguntas e respostas para a apresentação](docs/PERGUNTAS_E_RESPOSTAS_APRESENTACAO.md).
+- [Checklist final de entrega em Word](docs/CHECKLIST_FINAL_ENTREGA.docx).
+- [Vídeo da fase 1](docs/evidencias/fase1.mp4): registro antigo do menu inicial, mantido como acompanhamento do desenvolvimento.
 
 Antes da entrega final:
 
