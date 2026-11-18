@@ -153,8 +153,6 @@ A consulta é curta: resolução e custo do relógio, cache, posição do ID e c
 
 ## Testes
 
-O enunciado exige pelo menos dez casos, mas não exige automação nem Python. Eles podem ser realizados pelo menu. Os testes automatizados usados como apoio local não fazem parte da entrega e sua pasta é ignorada pelo Git.
-
 Compile com `make` e abra com `./programa`. Use este roteiro em uma sessão de teste:
 
 | Caso | Como testar | Resultado esperado |
@@ -186,13 +184,5 @@ Anote o resultado observado de cada caso e guarde capturas em `docs/evidencias/`
 
 - [Relatório técnico em PDF](docs/relatorio.pdf) e [fonte editável em HTML](docs/relatorio.html).
 - [Vídeo de demonstração](docs/evidencias/evidencia%20video.mp4): cadastro, consulta, preparo sequencial, threads, histórico e salvar/carregar. Não substitui as capturas exigidas nem comprova todos os cenários de teste.
-- [Guia do projeto](docs/GUIA_DO_PROJETO.md): arquitetura, módulos e explicações do código.
-- [Perguntas e respostas para a apresentação](docs/PERGUNTAS_E_RESPOSTAS_APRESENTACAO.md).
-- [Checklist final de entrega em Word](docs/CHECKLIST_FINAL_ENTREGA.docx).
 - [Vídeo da fase 1](docs/evidencias/fase1.mp4): registro antigo do menu inicial, mantido como acompanhamento do desenvolvimento.
 
-Antes da entrega final:
-
-- Executar e documentar os dez casos mínimos do professor conforme o roteiro acima.
-- Guardar as capturas exigidas e coletar as cinco medições reais da opção 8, com menor, maior e média.
-- Completar o relatório com os resultados e evidências; preparar slides e demonstração ao vivo de 10–15 minutos.
